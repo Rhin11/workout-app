@@ -2,6 +2,7 @@ import { useState } from 'react';
 import ExerciseCard from '../components/workout/ExerciseCard';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import WorkoutHistory from '../components/workout/WorkoutHistory';
+import WorkoutSummary from '../components/workout/WorkoutSummary';
 import { useWorkoutStore } from '../store/workoutStore';
 
 export default function WorkoutPage() {
@@ -134,6 +135,8 @@ export default function WorkoutPage() {
               Save Workout
             </button>
           </div>
+
+          <WorkoutSummary workout={activeWorkout} className="mb-6" />
 
           {activeWorkout.exercises.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-800 py-16 text-center">

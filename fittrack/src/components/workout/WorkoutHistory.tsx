@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Workout } from '../../store/workoutStore';
 import SetRow from './SetRow';
+import WorkoutSummary from './WorkoutSummary';
 
 interface Props {
   workouts: Workout[];
@@ -125,10 +126,13 @@ export default function WorkoutHistory({ workouts, onDelete, onEdit, onRename }:
 
             {expanded && !isRenaming && (
               <div className="border-t border-gray-800 px-4 pb-4">
+                <div className="pt-4 pb-4">
+                  <WorkoutSummary workout={workout} className="mb-4" />
+                </div>
                 {workout.exercises.length === 0 ? (
                   <p className="py-4 text-sm text-gray-500">No lifts logged</p>
                 ) : (
-                  <div className="space-y-4 pt-4">
+                  <div className="space-y-4">
                     {workout.exercises.map((exercise) => (
                       <HistoryExercise key={exercise.id} exercise={exercise} />
                     ))}
