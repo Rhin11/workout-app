@@ -13,6 +13,7 @@ export const colors = {
   protein: '#4A8CFF',
   carbs: '#F7A325',
   fat: '#FF6B6B',
+  water: '#38BDF8',
 } as const;
 
 export type ColorKey = keyof typeof colors;

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Professional back anatomy artwork goes here.
+
+  Export checklist:
+  - viewBox matches ANATOMY_VIEWBOX.back in muscleAnchors.ts (0 0 320 630)
+  - One <g id="..."> per muscle, id matching MuscleId (e.g. id="glutes")
+  - Bilateral paths inside the same group
+  - No hardcoded fill colors on paths
+  - Static layers: head, neck, hands, feet, outer-contour, fascia (non-interactive)
+  - Copy finalized <path> elements into BackBodySvg.tsx muscle groups
+
+  Do NOT add AI-generated placeholder body shapes to this file.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 630" fill="none">
+  <g id="static" data-layer="static">
+    <!-- head, neck, hands, feet, outer body contour -->
+  </g>
+  <g id="fascia" data-layer="fascia">
+    <!-- internal muscle separation lines (non-interactive) -->
+  </g>
+  <g id="traps" data-muscle="traps" />
+  <g id="rear_delts" data-muscle="rear_delts" />
+  <g id="side_delts" data-muscle="side_delts" />
+  <g id="triceps" data-muscle="triceps" />
+  <g id="forearms" data-muscle="forearms" />
+  <g id="lats" data-muscle="lats" />
+  <g id="lower_back" data-muscle="lower_back" />
+  <g id="glutes" data-muscle="glutes" />
+  <g id="hamstrings" data-muscle="hamstrings" />
+  <g id="calves" data-muscle="calves" />
+</svg>

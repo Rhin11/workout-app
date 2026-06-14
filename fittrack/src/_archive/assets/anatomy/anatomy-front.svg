@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Professional front anatomy artwork goes here.
+
+  Export checklist:
+  - viewBox matches ANATOMY_VIEWBOX.front in muscleAnchors.ts (0 0 320 630)
+  - One <g id="..."> per muscle, id matching MuscleId (e.g. id="chest")
+  - Bilateral paths inside the same group
+  - No hardcoded fill colors on paths (use fill="#ffffff" or remove fill attribute)
+  - Static layers: head, neck, hands, feet, outer-contour, fascia (non-interactive)
+  - Copy finalized <path> elements into FrontBodySvg.tsx muscle groups
+
+  Do NOT add AI-generated placeholder body shapes to this file.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 630" fill="none">
+  <g id="static" data-layer="static">
+    <!-- head, neck, hands, feet, outer body contour -->
+  </g>
+  <g id="fascia" data-layer="fascia">
+    <!-- internal muscle separation lines (non-interactive) -->
+  </g>
+  <g id="chest" data-muscle="chest" />
+  <g id="front_delts" data-muscle="front_delts" />
+  <g id="side_delts" data-muscle="side_delts" />
+  <g id="biceps" data-muscle="biceps" />
+  <g id="forearms" data-muscle="forearms" />
+  <g id="abs" data-muscle="abs" />
+  <g id="obliques" data-muscle="obliques" />
+  <g id="quadriceps" data-muscle="quadriceps" />
+  <g id="adductors" data-muscle="adductors" />
+  <g id="calves" data-muscle="calves" />
+</svg>
