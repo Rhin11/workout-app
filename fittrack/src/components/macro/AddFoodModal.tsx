@@ -23,6 +23,10 @@ interface Props {
   } & Nutrition) => void;
 }
 
+type ServingUnit = 'serving' | 'gram' | 'ounce' | 'hundred';
+
+const OUNCE_IN_GRAMS = 28.35;
+
 function ConfirmView({
   food,
   onBack,
@@ -32,7 +36,24 @@ function ConfirmView({
   onBack: () => void;
   onConfirm: (grams: number) => void;
 }) {
-  const [grams, setGrams] = useState(100);
+  const [quantity, setQuantity] = useState(1);
+  const [unit, setUnit] = useState<ServingUnit>(food.serving ? 'serving' : 'gram');
+
+  const gramsPerUnit = (u: ServingUnit): number => {
+    switch (u) {
+      case 'serving':
+        return food.serving?.grams ?? 1;
+      case 'ounce':
+        return OUNCE_IN_GRAMS;
+      case 'hundred':
+        return 100;
+      case 'gram':
+      default:
+        return 1;
+    }
+  };
+
+  const grams = quantity * gramsPerUnit(unit);
   const scaled = scaleNutrition(food.per100g, grams);
 
   return (
@@ -41,16 +62,31 @@ function ConfirmView({
         ← Back
       </button>
       <h3 className="font-medium text-gray-100">{food.name}</h3>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-gray-400">Serving size (grams)</span>
-        <input
-          type="number"
-          min={1}
-          value={grams}
-          onChange={(e) => setGrams(Math.max(1, Number(e.target.value) || 1))}
-          className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-gray-100 focus:border-indigo-500 focus:outline-none"
-        />
-      </label>
+      <div>
+        <span className="mb-1 block text-xs font-medium text-gray-400">Amount</span>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={0}
+            step="any"
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(0, Number(e.target.value) || 0))}
+            className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-gray-100 focus:border-indigo-500 focus:outline-none"
+            aria-label="Quantity"
+          />
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as ServingUnit)}
+            className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-gray-100 focus:border-indigo-500 focus:outline-none"
+            aria-label="Unit"
+          >
+            {food.serving && <option value="serving">serving ({food.serving.label})</option>}
+            <option value="gram">gram (g)</option>
+            <option value="ounce">ounce (oz)</option>
+            <option value="hundred">100 g</option>
+          </select>
+        </div>
+      </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
         {NUTRITION_FIELDS.map(({ key, label, unit }) => (
           <div key={key}>
@@ -304,7 +340,7 @@ export default function AddFoodModal({ meal, date, onClose, onAdd }: Props) {
               {searchLoading && <p className="text-sm text-gray-500">Searching…</p>}
               {searchError && <p className="text-sm text-red-400">{searchError}</p>}
               {!searchLoading && !searchError && query.trim() && results.length === 0 && (
-                <p className="text-sm text-gray-500">No results found</p>
+                <p className="text-sm text-gray-500">No foods found — try a different term</p>
               )}
               <ul className="divide-y divide-gray-800">
                 {results.map((item) => (
@@ -314,9 +350,23 @@ export default function AddFoodModal({ meal, date, onClose, onAdd }: Props) {
                       onClick={() => setSelectedFood(item)}
                       className="flex w-full items-center justify-between gap-2 py-3 text-left hover:bg-gray-800/50"
                     >
-                      <span className="truncate text-sm text-gray-100">{item.name}</span>
-                      <span className="shrink-0 text-xs text-gray-500">
-                        {Math.round(item.per100g.calories)} kcal/100g
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-gray-100">{item.name}</span>
+                        {item.brandOwner && (
+                          <span className="block truncate text-xs text-gray-500">
+                            {item.brandOwner}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-xs text-gray-500">
+                          {Math.round(item.per100g.calories)} kcal/100g
+                        </span>
+                        {item.dataType && (
+                          <span className="rounded-full border border-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+                            {item.dataType}
+                          </span>
+                        )}
                       </span>
                     </button>
                   </li>
