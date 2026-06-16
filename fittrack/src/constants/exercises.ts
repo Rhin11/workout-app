@@ -27,10 +27,108 @@ export interface ExerciseDefinition {
   name: string;
   category: ExerciseCategoryFilter;
   muscles: MuscleGroupFilter[];
+  /** Gym popularity, higher = more commonly performed. Drives default sort order. */
+  popularity: number;
   aliases?: string[];
 }
 
 const muscleTagMap = buildMuscleTagMap();
+
+/**
+ * Gym popularity by exercise name (higher = more popular). Single source of truth —
+ * tweak here to adjust ordering. Unlisted exercises default to 0 and fall back to
+ * alphabetical, keeping staple compounds above niche/accessory movements.
+ */
+const POPULARITY: Record<string, number> = {
+  // Overall staples
+  'Back Squat': 100,
+  'Bench Press': 99,
+  Deadlift: 98,
+  'Incline Bench Press': 96,
+  'Barbell Overhead Press': 95,
+  'Barbell Row': 94,
+  'Pull-Up': 93,
+  'Romanian Deadlift': 92,
+  'Dumbbell Bench Press': 91,
+  'Lat Pulldown': 90,
+  'Leg Press': 89,
+  'Front Squat': 88,
+  'Hip Thrust': 86,
+  'Cable Row': 86,
+  'Dumbbell Shoulder Press': 86,
+  'Seated Cable Row': 85,
+  'Leg Extension': 85,
+  'Dumbbell Lateral Raise': 85,
+  'Barbell Curl': 85,
+  'Cable Tricep Pushdown': 85,
+  'Bulgarian Split Squat': 84,
+  'Incline Dumbbell Press': 84,
+  'Chin-Up': 84,
+  'Lying Leg Curl': 84,
+  'Dumbbell Curl': 84,
+  'T-Bar Row': 83,
+  Dip: 82,
+  'Hammer Curl': 82,
+  'Rope Tricep Pushdown': 82,
+  Plank: 82,
+  'Close-Grip Bench Press': 81,
+  'Cable Fly': 80,
+  'Push-Up': 80,
+  'Dumbbell Row': 80,
+  'Walking Lunge': 80,
+  'Arnold Press': 80,
+  'Cable Face Pull': 80,
+  'Skull Crushers': 80,
+  'Seated Calf Raise Machine': 80,
+  'Seated Leg Curl': 80,
+  'Hanging Leg Raise': 80,
+  'Barbell Shrug': 80,
+  Thruster: 80,
+  'Kettlebell Swing': 80,
+  // Strong staples
+  'Pendlay Row': 78,
+  'Goblet Squat': 78,
+  'Cable Lateral Raise': 78,
+  'Standing Calf Raise Machine': 78,
+  'Cable Crunch': 78,
+  'Dumbbell Shrug': 78,
+  'Power Clean': 78,
+  Burpee: 78,
+  'Sumo Deadlift': 77,
+  'Hack Squat': 76,
+  'Ab Wheel Rollout': 76,
+  'Cable Curl': 76,
+  'Stiff-Leg Deadlift': 76,
+  'EZ-Bar Curl': 75,
+  'Push Press': 74,
+  'Cable Crossover': 74,
+  'Overhead Dumbbell Extension': 74,
+  'Sit-Up': 74,
+  'Box Jump': 74,
+  'Clean & Jerk': 74,
+  'Good Morning': 72,
+  'Chest Press Machine': 72,
+  'Dumbbell Tricep Extension': 72,
+  'Incline Dumbbell Curl': 72,
+  'Russian Twist': 72,
+  Snatch: 72,
+  Clean: 72,
+  'Preacher Curl Machine': 70,
+  'Pec Deck': 70,
+  'Inverted Row': 70,
+  'Cable Pull-Through': 70,
+  'Leg Press Calf Raise': 70,
+  'Cable Shrug': 70,
+  'Crunch': 70,
+  'Overhead Squat': 68,
+  'Concentration Curl': 68,
+  'Nordic Curl': 68,
+  'Glute Kickback Machine': 66,
+  'Cable Pallof Press': 66,
+  'Pistol Squat': 66,
+  'Turkish Get-Up': 64,
+  'Bodyweight Calf Raise': 62,
+};
 
 function inferMuscles(name: string): MuscleGroupFilter[] {
   const n = name.toLowerCase();
@@ -55,10 +153,13 @@ function inferMuscles(name: string): MuscleGroupFilter[] {
   return ['Full Body'];
 }
 
-function tagMuscles(exercise: Omit<ExerciseDefinition, 'muscles'>): ExerciseDefinition {
+function tagMuscles(
+  exercise: Omit<ExerciseDefinition, 'muscles' | 'popularity'>,
+): ExerciseDefinition {
   return {
     ...exercise,
     muscles: muscleTagMap.get(exercise.name) ?? inferMuscles(exercise.name),
+    popularity: POPULARITY[exercise.name] ?? 0,
   };
 }
 
@@ -601,6 +702,11 @@ function searchScore(exercise: ExerciseDefinition, query: string): number {
   return 0;
 }
 
+/** Stable popularity sort: higher popularity first, ties broken alphabetically. */
+function byPopularity(a: ExerciseDefinition, b: ExerciseDefinition): number {
+  return b.popularity - a.popularity || a.name.localeCompare(b.name);
+}
+
 export function searchExercises(
   query: string,
   options: {
@@ -621,21 +727,26 @@ export function searchExercises(
     return true;
   });
 
-  if (!searching) return base;
+  if (!searching) return base.sort(byPopularity);
 
   return base
     .map((exercise) => ({ exercise, score: searchScore(exercise, trimmed) }))
     .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score || a.exercise.name.localeCompare(b.exercise.name))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.exercise.popularity - a.exercise.popularity ||
+        a.exercise.name.localeCompare(b.exercise.name),
+    )
     .map(({ exercise }) => exercise);
 }
 
 export function getExercisesByMuscle(muscle: MuscleGroupFilter): ExerciseDefinition[] {
-  return EXERCISES.filter((e) => e.muscles.includes(muscle));
+  return EXERCISES.filter((e) => e.muscles.includes(muscle)).sort(byPopularity);
 }
 
 export function getExercisesByCategory(category: ExerciseCategoryFilter): ExerciseDefinition[] {
-  return EXERCISES.filter((e) => e.category === category);
+  return EXERCISES.filter((e) => e.category === category).sort(byPopularity);
 }
 
 export const EXERCISE_COUNT = EXERCISES.length;
