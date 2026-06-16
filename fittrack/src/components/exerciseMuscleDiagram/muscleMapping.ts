@@ -10,6 +10,8 @@ const LABEL_TO_REGIONS: Record<string, MuscleRegionId[]> = {
   Hamstrings: ['hamstrings'],
   Glutes: ['glutes'],
   Calves: ['calves'],
+  Abductors: ['abductors'],
+  Adductors: ['adductors'],
   Core: ['abs', 'obliques'],
   Traps: ['traps'],
   Forearms: ['forearms'],

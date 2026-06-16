@@ -19,6 +19,7 @@ export const REGION_TO_MUSCLE_GROUPS: Record<MuscleRegionId, MuscleGroup[]> = {
   hamstrings: ['HAMSTRINGS'],
   calves: ['CALVES'],
   adductors: ['ADDUCTORS'],
+  abductors: ['ABDUCTORS'],
 };
 
 export type RenderMusclePath = {

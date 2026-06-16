@@ -18,7 +18,10 @@ const MUSCLE_SPLITS: Record<string, MuscleSplit> = {
   'Front Squat': { primary: ['Quads'], secondary: ['Core', 'Glutes'] },
   Deadlift: { primary: ['Hamstrings', 'Glutes'], secondary: ['Back', 'Traps', 'Forearms'] },
   'Romanian Deadlift': { primary: ['Hamstrings', 'Glutes'], secondary: ['Back', 'Forearms'] },
-  'Sumo Deadlift': { primary: ['Glutes', 'Quads'], secondary: ['Back', 'Hamstrings', 'Traps'] },
+  'Sumo Deadlift': {
+    primary: ['Glutes', 'Quads'],
+    secondary: ['Back', 'Hamstrings', 'Traps', 'Adductors'],
+  },
   'Barbell Overhead Press': { primary: ['Shoulders'], secondary: ['Triceps', 'Core', 'Traps'] },
   'Barbell Row': { primary: ['Back'], secondary: ['Biceps', 'Forearms', 'Traps'] },
   'Lat Pulldown': { primary: ['Back'], secondary: ['Biceps', 'Forearms'] },
@@ -36,6 +39,13 @@ const MUSCLE_SPLITS: Record<string, MuscleSplit> = {
   'Cable Face Pull': { primary: ['Shoulders', 'Back'], secondary: ['Traps'] },
   Thruster: { primary: ['Quads', 'Shoulders'], secondary: ['Glutes', 'Triceps', 'Core'] },
   'Kettlebell Swing': { primary: ['Glutes', 'Hamstrings'], secondary: ['Core', 'Shoulders'] },
+  'Hip Abductor Machine': { primary: ['Abductors'], secondary: ['Glutes'] },
+  'Cable Hip Abduction': { primary: ['Abductors'], secondary: ['Glutes'] },
+  'Abductor Machine': { primary: ['Abductors'], secondary: ['Glutes'] },
+  'Hip Adductor Machine': { primary: ['Adductors'], secondary: [] },
+  'Cable Hip Adduction': { primary: ['Adductors'], secondary: [] },
+  'Adductor Machine': { primary: ['Adductors'], secondary: [] },
+  'Cossack Squat': { primary: ['Quads', 'Glutes'], secondary: ['Adductors', 'Core'] },
 };
 
 const INSTRUCTIONS: Record<string, string> = {

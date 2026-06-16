@@ -9,6 +9,8 @@ export const MUSCLE_GROUPS = [
   'Hamstrings',
   'Glutes',
   'Calves',
+  'Abductors',
+  'Adductors',
   'Core',
   'Traps',
   'Forearms',
@@ -161,6 +163,16 @@ export const EXERCISES_BY_MUSCLE: Record<MuscleGroupFilter, string[]> = {
     'Seated Calf Raise Machine', 'Standing Calf Raise Machine', 'Donkey Calf Raise Machine',
     'Smith Machine Calf Raise', 'Leg Press Calf Raise', 'Bodyweight Calf Raise',
     'Box Jump', 'Box Jump Over', 'Jump Squat', 'Double Under', 'Sprint',
+  ],
+
+  Abductors: [
+    'Hip Abductor Machine', 'Cable Hip Abduction', 'Abductor Machine',
+  ],
+
+  Adductors: [
+    'Hip Adductor Machine', 'Cable Hip Adduction', 'Adductor Machine',
+    'Sumo Deadlift', 'Kettlebell Sumo Deadlift', 'Dumbbell Sumo Squat',
+    'Cossack Squat', 'Kettlebell Cossack Squat',
   ],
 
   Core: [

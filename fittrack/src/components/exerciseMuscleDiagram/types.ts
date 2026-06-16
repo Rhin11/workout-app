@@ -14,7 +14,8 @@ export type MuscleRegionId =
   | 'quadriceps'
   | 'hamstrings'
   | 'calves'
-  | 'adductors';
+  | 'adductors'
+  | 'abductors';
 
 export type MuscleRole = 'primary' | 'secondary' | 'inactive';
 
