@@ -7,17 +7,36 @@ interface Props {
   onRemove: () => void;
   canRemove: boolean;
   readOnly?: boolean;
+  /** When set (superset rounds), replaces the set-number cell with this label. */
+  leadingLabel?: string;
 }
 
-export default function SetRow({ setNumber, set, onUpdate, onRemove, canRemove, readOnly }: Props) {
+export default function SetRow({
+  setNumber,
+  set,
+  onUpdate,
+  onRemove,
+  canRemove,
+  readOnly,
+  leadingLabel,
+}: Props) {
+  const leadCols = leadingLabel ? '6rem' : '2.5rem';
+  const leadCell = leadingLabel ? (
+    <span className="truncate pl-1 text-left text-xs text-gray-300" title={leadingLabel}>
+      {leadingLabel}
+    </span>
+  ) : (
+    <span className="text-center text-sm text-gray-500">{setNumber}</span>
+  );
   if (readOnly) {
     return (
       <div
-        className={`grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-2 border-b border-gray-800 py-2 ${
+        className={`grid items-center gap-2 border-b border-gray-800 py-2 ${
           set.completed ? 'opacity-60' : ''
         }`}
+        style={{ gridTemplateColumns: `${leadCols} 1fr 1fr 2.5rem` }}
       >
-        <span className="text-center text-sm text-gray-500">{setNumber}</span>
+        {leadCell}
         <span className="text-center text-sm text-gray-100">
           {set.weight} {set.unit}
         </span>
@@ -29,11 +48,12 @@ export default function SetRow({ setNumber, set, onUpdate, onRemove, canRemove, 
 
   return (
     <div
-      className={`grid grid-cols-[2.5rem_1fr_1fr_2.5rem_2rem] items-center gap-2 border-b border-gray-800 py-2 ${
+      className={`grid items-center gap-2 border-b border-gray-800 py-2 ${
         set.completed ? 'opacity-60' : ''
       }`}
+      style={{ gridTemplateColumns: `${leadCols} 1fr 1fr 2.5rem 2rem` }}
     >
-      <span className="text-center text-sm text-gray-500">{setNumber}</span>
+      {leadCell}
 
       <div className="flex items-center gap-1">
         <input

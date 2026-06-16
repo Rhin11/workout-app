@@ -3,11 +3,13 @@ import HomePage from './pages/HomePage';
 import WorkoutPage from './pages/WorkoutPage';
 import MacrosPage from './pages/MacrosPage';
 import BarbellPage from './pages/BarbellPage';
+import ConditioningPage from './pages/ConditioningPage';
 
 const tabs = [
   { to: '/workout', label: 'Workout' },
   { to: '/macros', label: 'Macros' },
   { to: '/barbell', label: 'Barbell' },
+  { to: '/conditioning', label: 'Conditioning' },
 ];
 
 function NavBar() {
@@ -45,6 +47,7 @@ export default function App() {
           <Route path="/workout" element={<WorkoutPage />} />
           <Route path="/macros" element={<MacrosPage />} />
           <Route path="/barbell" element={<BarbellPage />} />
+          <Route path="/conditioning" element={<ConditioningPage />} />
         </Routes>
       </main>
     </div>

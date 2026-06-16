@@ -107,56 +107,63 @@ export default function MacrosPage() {
           </button>
         </div>
 
-        {/* Summary cards */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <SummaryCard
-            label="Calories"
-            consumed={totals.calories}
-            goal={goals.calories}
-            unit="kcal"
-            color={colors.calories}
-            showGear
-            onEditGoals={() => setGoalsOpen(true)}
-          />
-          <SummaryCard
-            label="Protein"
-            consumed={totals.protein}
-            goal={goals.protein}
-            unit="g"
-            color={colors.protein}
-          />
-          <SummaryCard
-            label="Carbs"
-            consumed={totals.carbs}
-            goal={goals.carbs}
-            unit="g"
-            color={colors.carbs}
-          />
-          <SummaryCard
-            label="Fat"
-            consumed={totals.fat}
-            goal={goals.fat}
-            unit="g"
-            color={colors.fat}
-          />
-          <SummaryCard
-            label="Sodium"
-            consumed={totals.sodium}
-            goal={goals.sodium}
-            unit="mg"
-            color="#94A3B8"
-          />
-          <SummaryCard
-            label="Water"
-            consumed={waterOz}
-            goal={goals.water}
-            unit="oz"
-            color={colors.water}
-            formatValue={formatOz}
-            showGear
-            onEditGoals={() => setWaterGoalOpen(true)}
-          />
-        </div>
+        {/* Summary cards — full-width container, same scale as WaterTracker / meals */}
+        <section className="mb-6 rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-300">Daily goals</p>
+            <button
+              type="button"
+              onClick={() => setGoalsOpen(true)}
+              className="text-sm text-gray-500 hover:text-indigo-400"
+              aria-label="Edit macro goals"
+              title="Edit macro goals"
+            >
+              ⚙ Edit goals
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
+            <SummaryCard
+              embedded
+              label="Calories"
+              consumed={totals.calories}
+              goal={goals.calories}
+              unit="kcal"
+              color={colors.calories}
+            />
+            <SummaryCard
+              embedded
+              label="Protein"
+              consumed={totals.protein}
+              goal={goals.protein}
+              unit="g"
+              color={colors.protein}
+            />
+            <SummaryCard
+              embedded
+              label="Carbs"
+              consumed={totals.carbs}
+              goal={goals.carbs}
+              unit="g"
+              color={colors.carbs}
+            />
+            <SummaryCard
+              embedded
+              label="Fat"
+              consumed={totals.fat}
+              goal={goals.fat}
+              unit="g"
+              color={colors.fat}
+            />
+            <SummaryCard
+              embedded
+              label="Sodium"
+              consumed={totals.sodium}
+              goal={goals.sodium}
+              unit="mg"
+              color="#94A3B8"
+            />
+          </div>
+        </section>
 
         <WaterTracker
           consumedOz={waterOz}

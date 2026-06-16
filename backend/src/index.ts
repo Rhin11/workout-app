@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import liftCoachRouter from './routes/liftCoach';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -15,6 +17,7 @@ app.get('/health', (_req, res) => {
 // app.use('/auth', authRouter);
 // app.use('/workouts', workoutsRouter);
 // app.use('/food-logs', macrosRouter);
+app.use('/api/lift-coach', liftCoachRouter);
 
 app.listen(PORT, () => {
   console.log(`FitTrack backend running on port ${PORT}`);
