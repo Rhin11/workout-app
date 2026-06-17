@@ -15,6 +15,8 @@ export interface Exercise {
   notes: string;
   /** Rest time between sets, in seconds. Used when the exercise is NOT in a superset. */
   restSeconds: number;
+  /** Whether the rest timer auto-starts on set completion. On by default. */
+  restEnabled?: boolean;
   /** When set, this exercise belongs to a superset group with this id. */
   supersetId?: string;
   sets: WorkoutSet[];
@@ -24,6 +26,8 @@ export interface Exercise {
 export interface SupersetGroup {
   id: string;
   restSeconds: number;
+  /** Whether the shared rest timer auto-starts on set completion. Off by default. */
+  restEnabled?: boolean;
 }
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -52,6 +56,7 @@ interface WorkoutState {
   removeExercise: (exerciseId: string) => void;
   updateExerciseNotes: (exerciseId: string, notes: string) => void;
   setExerciseRest: (exerciseId: string, restSeconds: number) => void;
+  setExerciseRestEnabled: (exerciseId: string, enabled: boolean) => void;
   addSet: (exerciseId: string) => void;
   updateSet: (
     exerciseId: string,
@@ -64,6 +69,7 @@ interface WorkoutState {
   addToSuperset: (exerciseId: string, supersetId: string) => void;
   removeFromSuperset: (exerciseId: string) => void;
   setSupersetRest: (supersetId: string, restSeconds: number) => void;
+  setSupersetRestEnabled: (supersetId: string, enabled: boolean) => void;
   addSupersetRound: (supersetId: string) => void;
   removeSupersetRound: (supersetId: string, roundIndex: number) => void;
 }
@@ -190,6 +196,7 @@ export const useWorkoutStore = create<WorkoutState>()(
           name: trimmed,
           notes: '',
           restSeconds: DEFAULT_REST_SECONDS,
+          restEnabled: true,
           sets: [defaultSet()],
         };
         set({
@@ -216,6 +223,7 @@ export const useWorkoutStore = create<WorkoutState>()(
                 name: trimmed,
                 notes: '',
                 restSeconds: DEFAULT_REST_SECONDS,
+                restEnabled: true,
                 supersetId,
                 sets: [defaultSet()],
               },
@@ -266,6 +274,17 @@ export const useWorkoutStore = create<WorkoutState>()(
             ...w,
             exercises: w.exercises.map((e) =>
               e.id === exerciseId ? { ...e, restSeconds: clamped } : e,
+            ),
+          })),
+        });
+      },
+
+      setExerciseRestEnabled: (exerciseId, enabled) => {
+        set({
+          workouts: updateActiveWorkout(get().workouts, get().activeWorkoutId, (w) => ({
+            ...w,
+            exercises: w.exercises.map((e) =>
+              e.id === exerciseId ? { ...e, restEnabled: enabled } : e,
             ),
           })),
         });
@@ -341,7 +360,11 @@ export const useWorkoutStore = create<WorkoutState>()(
               ...orderedMembers,
               ...nonMembers.slice(insertAt),
             ];
-            const group: SupersetGroup = { id: groupId, restSeconds: DEFAULT_REST_SECONDS };
+            const group: SupersetGroup = {
+              id: groupId,
+              restSeconds: DEFAULT_REST_SECONDS,
+              restEnabled: true,
+            };
             return { ...w, exercises, supersetGroups: [...(w.supersetGroups ?? []), group] };
           }),
         });
@@ -398,6 +421,17 @@ export const useWorkoutStore = create<WorkoutState>()(
             ...w,
             supersetGroups: (w.supersetGroups ?? []).map((g) =>
               g.id === supersetId ? { ...g, restSeconds: clamped } : g,
+            ),
+          })),
+        });
+      },
+
+      setSupersetRestEnabled: (supersetId, enabled) => {
+        set({
+          workouts: updateActiveWorkout(get().workouts, get().activeWorkoutId, (w) => ({
+            ...w,
+            supersetGroups: (w.supersetGroups ?? []).map((g) =>
+              g.id === supersetId ? { ...g, restEnabled: enabled } : g,
             ),
           })),
         });

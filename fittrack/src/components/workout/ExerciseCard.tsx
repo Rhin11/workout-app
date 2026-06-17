@@ -9,6 +9,7 @@ import { useRestTimer } from '../../store/restTimerStore';
 import { formatMMSS } from '../../utils/time';
 import AskCoachButton from './AskCoachButton';
 import ExerciseInfoButton from './ExerciseInfoButton';
+import RestToggle from './RestToggle';
 import SetRow from './SetRow';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
   ) => void;
   onRemoveSet: (setId: string) => void;
   onChangeRest: (restSeconds: number) => void;
+  onToggleRest: (enabled: boolean) => void;
   // Superset grouping
   selecting?: boolean;
   selected?: boolean;
@@ -41,6 +43,7 @@ export default function ExerciseCard({
   onUpdateSet,
   onRemoveSet,
   onChangeRest,
+  onToggleRest,
   selecting = false,
   selected = false,
   onToggleSelected,
@@ -53,10 +56,11 @@ export default function ExerciseCard({
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
 
   const restSeconds = exercise.restSeconds ?? DEFAULT_REST_SECONDS;
+  const restEnabled = exercise.restEnabled ?? true;
   const startRest = useRestTimer((s) => s.start);
 
   const beginRest = () => {
-    if (restSeconds > 0) startRest(exercise.id, exercise.name, restSeconds);
+    if (restEnabled && restSeconds > 0) startRest(exercise.id, exercise.name, restSeconds);
   };
 
   const handleAddSet = () => {
@@ -221,23 +225,28 @@ export default function ExerciseCard({
         </button>
 
         <div className="flex items-center gap-1 rounded-lg border border-[#2A2A2A] bg-[#141414] px-1.5 py-1">
+          <RestToggle enabled={restEnabled} onToggle={onToggleRest} />
           <span className="px-1 text-xs uppercase tracking-wide text-gray-500">Rest</span>
           <button
             type="button"
             onClick={() => onChangeRest(Math.max(MIN_REST_SECONDS, restSeconds - REST_STEP))}
-            disabled={restSeconds <= MIN_REST_SECONDS}
+            disabled={!restEnabled || restSeconds <= MIN_REST_SECONDS}
             className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-30"
             aria-label="Decrease rest time"
           >
             −
           </button>
-          <span className="w-12 text-center text-sm font-medium tabular-nums text-gray-100">
+          <span
+            className={`w-12 text-center text-sm font-medium tabular-nums ${
+              restEnabled ? 'text-gray-100' : 'text-gray-600'
+            }`}
+          >
             {formatMMSS(restSeconds)}
           </span>
           <button
             type="button"
             onClick={() => onChangeRest(Math.min(MAX_REST_SECONDS, restSeconds + REST_STEP))}
-            disabled={restSeconds >= MAX_REST_SECONDS}
+            disabled={!restEnabled || restSeconds >= MAX_REST_SECONDS}
             className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-30"
             aria-label="Increase rest time"
           >

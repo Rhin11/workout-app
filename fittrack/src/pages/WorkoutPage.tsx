@@ -57,10 +57,12 @@ export default function WorkoutPage() {
     removeSet,
     updateExerciseNotes,
     setExerciseRest,
+    setExerciseRestEnabled,
     createSuperset,
     addToSuperset,
     removeFromSuperset,
     setSupersetRest,
+    setSupersetRestEnabled,
     addSupersetRound,
     removeSupersetRound,
   } = useWorkoutStore();
@@ -280,6 +282,7 @@ export default function WorkoutPage() {
                     onAddRound={() => addSupersetRound(item.groupId)}
                     onRemoveRound={(roundIndex) => removeSupersetRound(item.groupId, roundIndex)}
                     onChangeRest={(seconds) => setSupersetRest(item.groupId, seconds)}
+                    onToggleRest={(enabled) => setSupersetRestEnabled(item.groupId, enabled)}
                     onUnlink={(exerciseId) => removeFromSuperset(exerciseId)}
                     onRemoveExercise={(exerciseId) => removeExercise(exerciseId)}
                     onAddExercise={() => setAddTargetGroup(item.groupId)}
@@ -294,6 +297,7 @@ export default function WorkoutPage() {
                     onUpdateSet={(setId, updates) => updateSet(item.exercise.id, setId, updates)}
                     onRemoveSet={(setId) => removeSet(item.exercise.id, setId)}
                     onChangeRest={(seconds) => setExerciseRest(item.exercise.id, seconds)}
+                    onToggleRest={(enabled) => setExerciseRestEnabled(item.exercise.id, enabled)}
                     selecting={selecting}
                     selected={selectedIds?.includes(item.exercise.id) ?? false}
                     onToggleSelected={() => toggleSelected(item.exercise.id)}

@@ -6,6 +6,7 @@ import {
 } from '../../store/workoutStore';
 import { useRestTimer } from '../../store/restTimerStore';
 import { formatMMSS } from '../../utils/time';
+import RestToggle from './RestToggle';
 import SetRow from './SetRow';
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   onAddRound: () => void;
   onRemoveRound: (roundIndex: number) => void;
   onChangeRest: (restSeconds: number) => void;
+  onToggleRest: (enabled: boolean) => void;
   onUnlink: (exerciseId: string) => void;
   onRemoveExercise: (exerciseId: string) => void;
   onAddExercise: () => void;
@@ -35,11 +37,13 @@ export default function SupersetGroupCard({
   onAddRound,
   onRemoveRound,
   onChangeRest,
+  onToggleRest,
   onUnlink,
   onRemoveExercise,
   onAddExercise,
 }: Props) {
   const restSeconds = group.restSeconds;
+  const restEnabled = group.restEnabled ?? true;
   const startRest = useRestTimer((s) => s.start);
   const lastExerciseId = exercises[exercises.length - 1]?.id;
   const rounds = exercises.reduce((max, e) => Math.max(max, e.sets.length), 0);
@@ -47,7 +51,12 @@ export default function SupersetGroupCard({
   const handleUpdateSet: Props['onUpdateSet'] = (exerciseId, setId, updates) => {
     onUpdateSet(exerciseId, setId, updates);
     // Rest fires only after the LAST exercise in the round is completed.
-    if (updates.completed === true && exerciseId === lastExerciseId && restSeconds > 0) {
+    if (
+      updates.completed === true &&
+      exerciseId === lastExerciseId &&
+      restEnabled &&
+      restSeconds > 0
+    ) {
       startRest(group.id, label, restSeconds);
     }
   };
@@ -152,23 +161,28 @@ export default function SupersetGroupCard({
         </button>
 
         <div className="flex items-center gap-1 rounded-lg border border-[#2A2A2A] bg-[#0F0F0F] px-1.5 py-1">
+          <RestToggle enabled={restEnabled} onToggle={onToggleRest} />
           <span className="px-1 text-xs uppercase tracking-wide text-gray-500">Rest</span>
           <button
             type="button"
             onClick={() => onChangeRest(Math.max(MIN_REST_SECONDS, restSeconds - REST_STEP))}
-            disabled={restSeconds <= MIN_REST_SECONDS}
+            disabled={!restEnabled || restSeconds <= MIN_REST_SECONDS}
             className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-30"
             aria-label="Decrease rest time"
           >
             −
           </button>
-          <span className="w-12 text-center text-sm font-medium tabular-nums text-gray-100">
+          <span
+            className={`w-12 text-center text-sm font-medium tabular-nums ${
+              restEnabled ? 'text-gray-100' : 'text-gray-600'
+            }`}
+          >
             {formatMMSS(restSeconds)}
           </span>
           <button
             type="button"
             onClick={() => onChangeRest(Math.min(MAX_REST_SECONDS, restSeconds + REST_STEP))}
-            disabled={restSeconds >= MAX_REST_SECONDS}
+            disabled={!restEnabled || restSeconds >= MAX_REST_SECONDS}
             className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-30"
             aria-label="Increase rest time"
           >
