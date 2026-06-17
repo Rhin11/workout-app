@@ -4,8 +4,10 @@ import WorkoutPage from './pages/WorkoutPage';
 import MacrosPage from './pages/MacrosPage';
 import BarbellPage from './pages/BarbellPage';
 import ConditioningPage from './pages/ConditioningPage';
+import ProfilePage from './pages/ProfilePage';
 
 const tabs = [
+  { to: '/profile', label: 'Profile' },
   { to: '/workout', label: 'Workout' },
   { to: '/macros', label: 'Macros' },
   { to: '/barbell', label: 'Barbell' },
@@ -48,6 +50,7 @@ export default function App() {
           <Route path="/macros" element={<MacrosPage />} />
           <Route path="/barbell" element={<BarbellPage />} />
           <Route path="/conditioning" element={<ConditioningPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>
     </div>
