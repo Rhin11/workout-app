@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkoutStore } from '../store/workoutStore';
 import { useProfileStore, type Units } from '../store/profileStore';
 import { computePRs } from '../utils/prs';
 import BodyweightChart from '../components/profile/BodyweightChart';
+import MacroCalculator from '../components/profile/MacroCalculator';
 
 function todayKey(): string {
   const d = new Date();
@@ -61,12 +62,22 @@ export default function ProfilePage() {
 
   const prs = useMemo(() => computePRs(workouts), [workouts]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [macroCalcOpen, setMacroCalcOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [bwInput, setBwInput] = useState('');
   const [bwDate, setBwDate] = useState(todayKey());
 
   const latestBw = bodyweights[bodyweights.length - 1] ?? null;
+
+  useEffect(() => {
+    if (window.location.hash === '#macro-calculator') {
+      setMacroCalcOpen(true);
+      requestAnimationFrame(() => {
+        document.getElementById('macro-calculator')?.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+  }, []);
 
   const onPickPhoto = async (file: File | undefined) => {
     if (!file) return;
@@ -147,6 +158,32 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* SECTION — Macro calculator */}
+      <section id="macro-calculator">
+        <div className={card}>
+          <button
+            type="button"
+            onClick={() => setMacroCalcOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+            aria-expanded={macroCalcOpen}
+          >
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-100">Macro calculator</p>
+              <p className="text-xs text-gray-500">
+                Estimate daily calories and macros from your stats and goal.
+              </p>
+            </div>
+            <span className="shrink-0 text-gray-500">{macroCalcOpen ? '▴' : '▾'}</span>
+          </button>
+
+          {macroCalcOpen && (
+            <div className="mt-3 border-t border-[#2A2A2A] pt-3">
+              <MacroCalculator hideIntro />
+            </div>
+          )}
         </div>
       </section>
 

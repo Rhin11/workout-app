@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Workout } from '../../store/workoutStore';
 import SetRow from './SetRow';
 import WorkoutSummary from './WorkoutSummary';
@@ -8,6 +8,8 @@ interface Props {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onRename: (id: string, name: string) => void;
+  /** When set, this workout starts expanded and is scrolled into view (e.g. deep-linked from Home). */
+  initialExpandedId?: string | null;
 }
 
 function formatDate(iso: string) {
@@ -25,10 +27,23 @@ function workoutSummary(workout: Workout) {
   return `${exerciseCount} lift${exerciseCount === 1 ? '' : 's'} · ${setCount} set${setCount === 1 ? '' : 's'}`;
 }
 
-export default function WorkoutHistory({ workouts, onDelete, onEdit, onRename }: Props) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+export default function WorkoutHistory({
+  workouts,
+  onDelete,
+  onEdit,
+  onRename,
+  initialExpandedId,
+}: Props) {
+  const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!initialExpandedId) return;
+    setExpandedId(initialExpandedId);
+    rowRefs.current[initialExpandedId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [initialExpandedId]);
 
   const beginRename = (workout: Workout) => {
     setRenamingId(workout.id);
@@ -61,7 +76,13 @@ export default function WorkoutHistory({ workouts, onDelete, onEdit, onRename }:
         const isRenaming = renamingId === workout.id;
 
         return (
-          <div key={workout.id} className="rounded-xl border border-gray-800 bg-gray-900">
+          <div
+            key={workout.id}
+            ref={(el) => {
+              rowRefs.current[workout.id] = el;
+            }}
+            className="rounded-xl border border-gray-800 bg-gray-900"
+          >
             <div className="flex items-center gap-2 p-4">
               {isRenaming ? (
                 <div className="flex min-w-0 flex-1 items-center gap-2">

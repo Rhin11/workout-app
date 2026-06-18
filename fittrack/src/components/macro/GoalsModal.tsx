@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import type { MacroGoals } from '../../store/macroStore';
 
 interface Props {
@@ -19,6 +20,7 @@ const FIELDS: { key: keyof MacroGoals; label: string; unit: string }[] = [
 
 export default function GoalsModal({ goals, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<MacroGoals>(goals);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,6 +77,17 @@ export default function GoalsModal({ goals, onSave, onClose }: Props) {
             </label>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            navigate('/profile#macro-calculator');
+          }}
+          className="mt-4 w-full rounded-lg border border-[#2A2A2A] py-2 text-sm text-gray-300 transition-colors hover:border-[#6C63FF] hover:text-[#6C63FF]"
+        >
+          Calculate recommended macros from profile
+        </button>
 
         <div className="mt-5 flex justify-end gap-2">
           <button

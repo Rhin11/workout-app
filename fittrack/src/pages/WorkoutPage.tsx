@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import ExerciseCard from '../components/workout/ExerciseCard';
 import ExercisePicker from '../components/workout/ExercisePicker';
 import RestTimerBar from '../components/workout/RestTimerBar';
@@ -67,6 +68,9 @@ export default function WorkoutPage() {
     removeSupersetRound,
   } = useWorkoutStore();
 
+  const location = useLocation();
+  const viewWorkoutId = (location.state as { viewWorkoutId?: string } | null)?.viewWorkoutId ?? null;
+
   const activeWorkout = workouts.find((w) => w.id === activeWorkoutId);
   const pastWorkouts = workouts.filter((w) => w.finishedAt !== null);
   const addedExercises = activeWorkout?.exercises.map((e) => e.name) ?? [];
@@ -134,6 +138,7 @@ export default function WorkoutPage() {
               onDelete={deleteWorkout}
               onEdit={editWorkout}
               onRename={renameWorkout}
+              initialExpandedId={viewWorkoutId}
             />
           </section>
         )}

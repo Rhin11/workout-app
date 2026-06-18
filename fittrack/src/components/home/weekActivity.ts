@@ -60,6 +60,54 @@ export function dayHasActivity(
   );
 }
 
+export type MonthCell = {
+  dateKey: string;
+  dayOfMonth: number;
+  isToday: boolean;
+  inMonth: boolean;
+};
+
+/** A Monday-anchored calendar grid for the given month, padded to full weeks. */
+export function getMonthGrid(year: number, month: number, reference: Date = new Date()): MonthCell[] {
+  const todayKey = toDateKey(reference);
+  const firstDow = new Date(year, month, 1).getDay(); // 0 Sun … 6 Sat
+  const lead = firstDow === 0 ? 6 : firstDow - 1; // days before Monday-start
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = Math.ceil((lead + daysInMonth) / 7) * 7;
+  const start = new Date(year, month, 1 - lead);
+
+  const cells: MonthCell[] = [];
+  for (let i = 0; i < totalCells; i += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    const dateKey = toDateKey(date);
+    cells.push({
+      dateKey,
+      dayOfMonth: date.getDate(),
+      isToday: dateKey === todayKey,
+      inMonth: date.getMonth() === month,
+    });
+  }
+  return cells;
+}
+
+/** All workouts whose logged date falls on the given day key. */
+export function workoutsOnDate(workouts: Workout[], dateKey: string): Workout[] {
+  return workouts.filter((w) => toDateKey(new Date(w.finishedAt ?? w.date)) === dateKey);
+}
+
+/** Sum of calories logged on the given day, read defensively from macro entries. */
+export function caloriesOnDate(
+  entriesByDate: Record<string, unknown[]>,
+  dateKey: string,
+): number {
+  const entries = entriesByDate[dateKey] ?? [];
+  return entries.reduce((sum, e) => {
+    const cals = (e as { calories?: unknown }).calories;
+    return sum + (typeof cals === 'number' ? cals : 0);
+  }, 0);
+}
+
 export function calculateStreak(
   reference: Date,
   hasActivity: (dateKey: string) => boolean,
