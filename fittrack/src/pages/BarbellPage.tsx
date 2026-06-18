@@ -2,17 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import AnalysisHistory from '../components/barbell/AnalysisHistory';
 import CameraView, { type CapturedVideo } from '../components/barbell/CameraView';
 import PathOverlay from '../components/barbell/PathOverlay';
+import SeedPicker from '../components/barbell/SeedPicker';
 import StatsRow from '../components/barbell/StatsRow';
 import StickingPointsCard from '../components/barbell/StickingPointsCard';
 import { useBarbellStore, type BarbellSession } from '../store/barbellStore';
-import { getAnalysis, type Analysis } from '../utils/barbellAnalysis';
+import { getAnalysis, type Analysis, type SeedPoint } from '../utils/barbellAnalysis';
 
 export default function BarbellPage() {
   const addSession = useBarbellStore((s) => s.addSession);
 
   const [captured, setCaptured] = useState<CapturedVideo | null>(null);
+  const [seed, setSeed] = useState<SeedPoint | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
@@ -28,7 +31,9 @@ export default function BarbellPage() {
     if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
     lastObjectUrl.current = video.videoUrl;
     setCaptured(video);
+    setSeed(null);
     setAnalysis(null);
+    setAnalyzeError(null);
     setActiveSessionId(null);
     setBackground(video.firstFrameDataUrl || null);
   };
@@ -37,22 +42,31 @@ export default function BarbellPage() {
     if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
     lastObjectUrl.current = null;
     setCaptured(null);
+    setSeed(null);
     setAnalysis(null);
+    setAnalyzeError(null);
     setBackground(null);
     setActiveSessionId(null);
   };
 
   const handleAnalyze = async () => {
+    if (!captured) return;
     setAnalyzing(true);
-    // getAnalysis() is the ONLY mock — swap its body for the real backend later.
-    const result = await getAnalysis();
-    const session = addSession({
-      thumbnail: captured?.firstFrameDataUrl ?? '',
-      analysis: result,
-    });
-    setAnalysis(result);
-    setActiveSessionId(session.id);
-    setAnalyzing(false);
+    setAnalyzeError(null);
+    try {
+      // getAnalysis() is the single data source — it POSTs to the CV service.
+      const result = await getAnalysis(captured.blob, seed);
+      const session = addSession({
+        thumbnail: captured.firstFrameDataUrl ?? '',
+        analysis: result,
+      });
+      setAnalysis(result);
+      setActiveSessionId(session.id);
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : 'Analysis failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const handleSelectSession = (session: BarbellSession) => {
@@ -93,9 +107,20 @@ export default function BarbellPage() {
           videoUrl={captured?.videoUrl ?? null}
         />
 
+        {/* Seed-point step: tap the bar to improve tracking (optional). */}
+        {captured && !analysis && captured.firstFrameDataUrl && (
+          <div className="mt-5">
+            <SeedPicker
+              firstFrameDataUrl={captured.firstFrameDataUrl}
+              seed={seed}
+              onSeed={setSeed}
+            />
+          </div>
+        )}
+
         {/* 3. Analyze button */}
         {captured && (
-          <div className="mt-5 flex justify-center">
+          <div className="mt-5 flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={handleAnalyze}
@@ -111,6 +136,9 @@ export default function BarbellPage() {
                 'Analyze Lift'
               )}
             </button>
+            {analyzeError && (
+              <p className="max-w-sm text-center text-sm text-red-400">{analyzeError}</p>
+            )}
           </div>
         )}
       </section>
@@ -124,6 +152,8 @@ export default function BarbellPage() {
               path={analysis.path}
               stickingPoints={analysis.sticking_points}
               backgroundUrl={background}
+              videoWidth={analysis.video_width}
+              videoHeight={analysis.video_height}
             />
           </section>
 

@@ -1,10 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Barbell path analysis.
 //
-// This module is the single isolation layer between the UI and the (eventual)
-// real video-analysis backend. Today `getAnalysis()` returns realistic MOCK
-// data; later, its body is swapped to call the real service and NOTHING else in
-// the app needs to change. The `Analysis` shape below is the contract.
+// This module is the single isolation layer between the UI and the real
+// video-analysis backend. `getAnalysis()` POSTs the lift video to the standalone
+// CV service (cv-service/, port 8000) and returns its result; the `Analysis`
+// shape below is the contract the results UI renders from. `generateMockAnalysis`
+// is retained as a dev/offline reference and is not on the live path.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PathPoint {
@@ -27,29 +28,58 @@ export interface Analysis {
   avg_speed: number;
   peak_speed: number;
   time_under_tension_s: number;
+  /**
+   * Native video pixel dimensions. Present for real CV results (path is in pixel
+   * coordinates); absent for legacy Stage-1 mock sessions (normalized 0–100 space).
+   */
+  video_width?: number;
+  video_height?: number;
+}
+
+/** Base URL of the standalone CV service (see cv-service/README.md). */
+const CV_SERVICE_URL = 'http://localhost:8000';
+
+export interface SeedPoint {
+  x: number;
+  y: number;
 }
 
 /**
- * THE SINGLE SWAP POINT.
+ * THE SINGLE DATA SOURCE.
  *
- * Currently resolves to generated mock data after a short delay (standing in for
- * real backend latency). To wire up the real analyzer later, replace the body
- * with something like:
- *
- *   const form = new FormData();
- *   form.append('video', videoBlob);
- *   const { data } = await axios.post<Analysis>('/api/analyze', form);
- *   return data;
- *
- * Callers only ever see a `Promise<Analysis>`, so no UI changes are required.
+ * POSTs the lift video (and an optional seed point, in video pixels) to the CV
+ * service and returns the parsed analysis. The return shape is identical to the
+ * Stage-1 mock, so the results UI renders unchanged.
  */
-export async function getAnalysis(): Promise<Analysis> {
-  await delay(1500);
-  return generateMockAnalysis();
-}
+export async function getAnalysis(video: Blob, seed?: SeedPoint | null): Promise<Analysis> {
+  const form = new FormData();
+  form.append('video', video, 'lift.webm');
+  if (seed) {
+    form.append('seed_x', String(Math.round(seed.x)));
+    form.append('seed_y', String(Math.round(seed.y)));
+  }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  let res: Response;
+  try {
+    res = await fetch(`${CV_SERVICE_URL}/analyze`, { method: 'POST', body: form });
+  } catch {
+    throw new Error(
+      "Analysis service isn't running — start the cv-service (see cv-service/README.md).",
+    );
+  }
+
+  if (!res.ok) {
+    let message = 'Analysis failed. Please try again.';
+    try {
+      const data = await res.json();
+      if (typeof data?.detail === 'string') message = data.detail;
+    } catch {
+      // Non-JSON error body — keep the generic message.
+    }
+    throw new Error(message);
+  }
+
+  return (await res.json()) as Analysis;
 }
 
 // ── Mock generation ──────────────────────────────────────────────────────────

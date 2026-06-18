@@ -7,6 +7,13 @@ interface Props {
   stickingPoints: StickingPoint[];
   /** Data URL of the lift's first frame, drawn behind the overlay. */
   backgroundUrl?: string | null;
+  /**
+   * Native video dimensions (px). When present, the path is in pixel
+   * coordinates and the overlay scales to the real video aspect ratio. When
+   * absent (legacy mock sessions), the path is in 0–100 normalized space.
+   */
+  videoWidth?: number;
+  videoHeight?: number;
 }
 
 interface ColoredSegment {
@@ -45,7 +52,13 @@ function buildSegments(path: PathPoint[]): ColoredSegment[] {
   return segments;
 }
 
-export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Props) {
+export default function PathOverlay({
+  path,
+  stickingPoints,
+  backgroundUrl,
+  videoWidth,
+  videoHeight,
+}: Props) {
   const segments = useMemo(() => buildSegments(path), [path]);
 
   const markers = useMemo(
@@ -56,21 +69,33 @@ export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Pro
     [stickingPoints, path],
   );
 
+  // Real pixel-space results carry video dimensions; legacy mock data is 0–100.
+  const hasDims = Boolean(videoWidth && videoHeight);
+  const vbW = hasDims ? videoWidth! : 100;
+  const vbH = hasDims ? videoHeight! : 100;
+  // Scale stroke widths / marker radii so they look identical at any viewBox size.
+  const k = Math.max(vbW, vbH) / 100;
+
   return (
     <div>
-      <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-xl border border-[#2A2A2A] bg-black">
+      <div
+        className={`relative mx-auto w-full max-w-sm overflow-hidden rounded-xl border border-[#2A2A2A] bg-black ${
+          hasDims ? '' : 'aspect-[3/4]'
+        }`}
+        style={hasDims ? { aspectRatio: `${vbW} / ${vbH}` } : undefined}
+      >
         {backgroundUrl ? (
           <img
             src={backgroundUrl}
             alt="First frame of the lift"
-            className="h-full w-full object-cover opacity-80"
+            className={`h-full w-full opacity-80 ${hasDims ? 'object-fill' : 'object-cover'}`}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a]" />
         )}
 
         <svg
-          viewBox="0 0 100 100"
+          viewBox={`0 0 ${vbW} ${vbH}`}
           preserveAspectRatio="none"
           className="absolute inset-0 h-full w-full"
         >
@@ -82,7 +107,7 @@ export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Pro
               fill="none"
               stroke="black"
               strokeOpacity={0.35}
-              strokeWidth={2.6}
+              strokeWidth={2.6 * k}
               strokeLinecap="round"
             />
           ))}
@@ -92,7 +117,7 @@ export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Pro
               d={seg.d}
               fill="none"
               stroke={seg.color}
-              strokeWidth={1.8}
+              strokeWidth={1.8 * k}
               strokeLinecap="round"
             />
           ))}
@@ -100,10 +125,10 @@ export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Pro
           {/* Sticking points: pulsing red markers. */}
           {markers.map((p, i) => (
             <g key={`m-${i}`}>
-              <circle cx={p.x} cy={p.y} r={3.5} fill="#ef4444" fillOpacity={0.4}>
+              <circle cx={p.x} cy={p.y} r={3.5 * k} fill="#ef4444" fillOpacity={0.4}>
                 <animate
                   attributeName="r"
-                  values="3.5;6.5;3.5"
+                  values={`${3.5 * k};${6.5 * k};${3.5 * k}`}
                   dur="1.4s"
                   repeatCount="indefinite"
                 />
@@ -114,7 +139,7 @@ export default function PathOverlay({ path, stickingPoints, backgroundUrl }: Pro
                   repeatCount="indefinite"
                 />
               </circle>
-              <circle cx={p.x} cy={p.y} r={2} fill="#ef4444" stroke="white" strokeWidth={0.6} />
+              <circle cx={p.x} cy={p.y} r={2 * k} fill="#ef4444" stroke="white" strokeWidth={0.6 * k} />
             </g>
           ))}
         </svg>

@@ -5,6 +5,11 @@ export interface CapturedVideo {
   videoUrl: string;
   /** Data URL of the first frame, used as overlay background + history thumbnail. */
   firstFrameDataUrl: string;
+  /** The raw video bytes, POSTed to the CV service for analysis. */
+  blob: Blob;
+  /** Native video resolution (px) — used to scale seed taps into pixel coords. */
+  width: number;
+  height: number;
 }
 
 interface Props {
@@ -38,6 +43,14 @@ function captureFirstFrame(video: HTMLVideoElement): string {
   }
 }
 
+function clearVideoElement(video: HTMLVideoElement | null) {
+  if (!video) return;
+  video.pause();
+  video.srcObject = null;
+  video.removeAttribute('src');
+  video.load();
+}
+
 export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: Props) {
   const liveVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -51,6 +64,7 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [autoRecord, setAutoRecord] = useState(false);
 
   // Stop everything and release the camera.
   const teardownStream = () => {
@@ -65,15 +79,27 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
 
   useEffect(() => teardownStream, []);
 
+  useEffect(() => {
+    if (!hasVideo) {
+      clearVideoElement(previewVideoRef.current);
+    }
+  }, [hasVideo]);
+
   // Pull the first frame off a ready video element, then hand the capture up.
-  const emitCapture = (url: string) => {
+  const emitCapture = (url: string, blob: Blob) => {
     const probe = document.createElement('video');
     probe.preload = 'auto';
     probe.muted = true;
     probe.src = url;
     const finish = () => {
       const frame = captureFirstFrame(probe);
-      onCapture({ videoUrl: url, firstFrameDataUrl: frame });
+      onCapture({
+        videoUrl: url,
+        firstFrameDataUrl: frame,
+        blob,
+        width: probe.videoWidth || 0,
+        height: probe.videoHeight || 0,
+      });
     };
     probe.onloadeddata = () => {
       // Seek a hair past 0 so a real frame is decoded.
@@ -88,7 +114,8 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
         finish();
       }
     };
-    probe.onerror = () => onCapture({ videoUrl: url, firstFrameDataUrl: '' });
+    probe.onerror = () =>
+      onCapture({ videoUrl: url, firstFrameDataUrl: '', blob, width: 0, height: 0 });
   };
 
   const startRecording = async () => {
@@ -100,6 +127,7 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
       });
       streamRef.current = stream;
       if (liveVideoRef.current) {
+        clearVideoElement(liveVideoRef.current);
         liveVideoRef.current.srcObject = stream;
         await liveVideoRef.current.play().catch(() => {});
       }
@@ -114,7 +142,7 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
         teardownStream();
         const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || 'video/webm' });
         const url = URL.createObjectURL(blob);
-        emitCapture(url);
+        emitCapture(url, blob);
         setRecording(false);
       };
 
@@ -144,12 +172,21 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
     }
   };
 
+  useEffect(() => {
+    if (!hasVideo && autoRecord) {
+      setAutoRecord(false);
+      void startRecording();
+    }
+    // startRecording is stable enough for this one-shot retake flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasVideo, autoRecord]);
+
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     const url = URL.createObjectURL(file);
-    emitCapture(url);
+    emitCapture(url, file);
     e.target.value = '';
   };
 
@@ -157,7 +194,11 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
     stopRecording();
     teardownStream();
     setElapsed(0);
+    setError(null);
+    clearVideoElement(previewVideoRef.current);
+    clearVideoElement(liveVideoRef.current);
     onReset();
+    setAutoRecord(true);
   };
 
   const btnPrimary =
@@ -171,6 +212,7 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
       <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-xl border border-[#2A2A2A] bg-black">
         {hasVideo && videoUrl ? (
           <video
+            key="preview"
             ref={previewVideoRef}
             src={videoUrl}
             controls
@@ -180,6 +222,7 @@ export default function CameraView({ onCapture, onReset, hasVideo, videoUrl }: P
         ) : (
           <>
             <video
+              key="live"
               ref={liveVideoRef}
               muted
               playsInline
