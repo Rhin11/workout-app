@@ -244,15 +244,31 @@ export function speedColor(normalized: number): string {
   return `rgb(${r}, ${g}, 70)`;
 }
 
+export type StickingZone = 'bottom' | 'mid' | 'lockout';
+
+/** Which zone of the rep a sticking position falls in. Shared by tips + trends. */
+export function stickingZone(positionPct: number): StickingZone {
+  if (positionPct < 30) return 'bottom';
+  if (positionPct < 60) return 'mid';
+  return 'lockout';
+}
+
+/** Short human label for a zone, e.g. for the recurring-sticking insight. */
+export const ZONE_LABEL: Record<StickingZone, string> = {
+  bottom: 'near the bottom',
+  mid: 'mid-range',
+  lockout: 'near lockout',
+};
+
+const ZONE_TIP: Record<StickingZone, string> = {
+  bottom: 'Sticking near the bottom — focus on staying tight and driving out of the hole.',
+  mid: 'Mid-range sticking point — often weak glutes/hips or loss of tension.',
+  lockout: 'Sticking near lockout — often a triceps (press) or upper-back/lockout weakness.',
+};
+
 /** Auto-generated coaching tip based on where in the rep the sticking occurs. */
 export function tipForPosition(positionPct: number): string {
-  if (positionPct < 30) {
-    return 'Sticking near the bottom — focus on staying tight and driving out of the hole.';
-  }
-  if (positionPct < 60) {
-    return 'Mid-range sticking point — often weak glutes/hips or loss of tension.';
-  }
-  return 'Sticking near lockout — often a triceps (press) or upper-back/lockout weakness.';
+  return ZONE_TIP[stickingZone(positionPct)];
 }
 
 function round1(n: number): number {

@@ -5,11 +5,23 @@ import PathOverlay from '../components/barbell/PathOverlay';
 import SeedPicker from '../components/barbell/SeedPicker';
 import StatsRow from '../components/barbell/StatsRow';
 import StickingPointsCard from '../components/barbell/StickingPointsCard';
+import TagAnalysisCard, { type AnalysisTag } from '../components/barbell/TagAnalysisCard';
+import TagAnalysisModal from '../components/barbell/TagAnalysisModal';
 import { useBarbellStore, type BarbellSession } from '../store/barbellStore';
 import { getAnalysis, type Analysis, type SeedPoint } from '../utils/barbellAnalysis';
+import { sessionDate } from '../utils/barbellTrends';
+
+function formatMetaDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 export default function BarbellPage() {
   const addSession = useBarbellStore((s) => s.addSession);
+  const updateSession = useBarbellStore((s) => s.updateSession);
 
   const [captured, setCaptured] = useState<CapturedVideo | null>(null);
   const [seed, setSeed] = useState<SeedPoint | null>(null);
@@ -17,7 +29,11 @@ export default function BarbellPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  // The saved session currently being viewed. Null while a fresh analysis is
+  // still untagged/unsaved (the tag form is shown instead).
+  const [viewedSession, setViewedSession] = useState<BarbellSession | null>(null);
+  // Whether the re-tag modal is open for the viewed session.
+  const [editingViewed, setEditingViewed] = useState(false);
 
   // Revoke object URLs we create for live captures (not history thumbnails).
   const lastObjectUrl = useRef<string | null>(null);
@@ -34,7 +50,8 @@ export default function BarbellPage() {
     setSeed(null);
     setAnalysis(null);
     setAnalyzeError(null);
-    setActiveSessionId(null);
+    setViewedSession(null);
+    setEditingViewed(false);
     setBackground(video.firstFrameDataUrl || null);
   };
 
@@ -46,7 +63,7 @@ export default function BarbellPage() {
     setAnalysis(null);
     setAnalyzeError(null);
     setBackground(null);
-    setActiveSessionId(null);
+    setViewedSession(null);
   };
 
   const handleAnalyze = async () => {
@@ -55,13 +72,10 @@ export default function BarbellPage() {
     setAnalyzeError(null);
     try {
       // getAnalysis() is the single data source — it POSTs to the CV service.
+      // Results are shown unsaved; the user tags + saves them via TagAnalysisCard.
       const result = await getAnalysis(captured.blob, seed);
-      const session = addSession({
-        thumbnail: captured.firstFrameDataUrl ?? '',
-        analysis: result,
-      });
       setAnalysis(result);
-      setActiveSessionId(session.id);
+      setViewedSession(null);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : 'Analysis failed. Please try again.');
     } finally {
@@ -69,14 +83,35 @@ export default function BarbellPage() {
     }
   };
 
+  const handleSaveTag = (tag: AnalysisTag) => {
+    if (!analysis) return;
+    const session = addSession({
+      thumbnail: captured?.firstFrameDataUrl ?? background ?? '',
+      analysis,
+      exerciseName: tag.exerciseName,
+      date: tag.date,
+      weight: tag.weight,
+      weightUnit: tag.weightUnit,
+    });
+    setViewedSession(session);
+  };
+
   const handleSelectSession = (session: BarbellSession) => {
     setAnalysis(session.analysis);
     setBackground(session.thumbnail || null);
-    setActiveSessionId(session.id);
+    setViewedSession(session);
+    setEditingViewed(false);
     // Keep any in-progress capture; just show the chosen historical result.
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
+  };
+
+  const handleEditViewedTag = (tag: AnalysisTag) => {
+    if (!viewedSession) return;
+    updateSession(viewedSession.id, tag);
+    setViewedSession({ ...viewedSession, ...tag });
+    setEditingViewed(false);
   };
 
   const card = 'rounded-xl border border-[#2A2A2A] bg-[#141414] p-5';
@@ -146,6 +181,39 @@ export default function BarbellPage() {
       {/* 4. Results */}
       {analysis && (
         <>
+          {viewedSession && (
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+              {viewedSession.exerciseName ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-semibold text-gray-100">{viewedSession.exerciseName}</span>
+                    <span className="text-gray-500">· {formatMetaDate(sessionDate(viewedSession))}</span>
+                    {viewedSession.weight != null && (
+                      <span className="text-gray-500">
+                        · {viewedSession.weight} {viewedSession.weightUnit ?? 'lbs'}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingViewed(true)}
+                    className="shrink-0 text-xs font-medium text-gray-500 transition-colors hover:text-[#6C63FF]"
+                  >
+                    Edit tag
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingViewed(true)}
+                  className="rounded-lg border border-[#6C63FF]/40 bg-[#6C63FF]/10 px-4 py-2 text-sm font-semibold text-[#6C63FF] transition-colors hover:bg-[#6C63FF]/20"
+                >
+                  Assign lift
+                </button>
+              )}
+            </div>
+          )}
+
           <section className={card}>
             <h2 className="mb-4 text-sm font-semibold text-gray-100">Bar path</h2>
             <PathOverlay
@@ -160,11 +228,28 @@ export default function BarbellPage() {
           <StatsRow analysis={analysis} />
 
           <StickingPointsCard stickingPoints={analysis.sticking_points} />
+
+          {/* Tag step: only for a fresh, not-yet-saved analysis. */}
+          {!viewedSession && <TagAnalysisCard onSave={handleSaveTag} />}
         </>
       )}
 
       {/* 5. History */}
-      <AnalysisHistory onSelect={handleSelectSession} activeId={activeSessionId} />
+      <AnalysisHistory onSelect={handleSelectSession} activeId={viewedSession?.id ?? null} />
+
+      {editingViewed && viewedSession && (
+        <TagAnalysisModal
+          initial={{
+            exerciseName: viewedSession.exerciseName,
+            date: viewedSession.date ?? viewedSession.createdAt,
+            weight: viewedSession.weight,
+            weightUnit: viewedSession.weightUnit,
+          }}
+          isEdit={Boolean(viewedSession.exerciseName)}
+          onSave={handleEditViewedTag}
+          onClose={() => setEditingViewed(false)}
+        />
+      )}
     </div>
   );
 }
