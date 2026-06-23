@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "node --use-system-ca ./node_modules/ts-node/dist/bin.js src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node --use-system-ca dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "test": "echo \"Error: no test specified\" && exit 1"

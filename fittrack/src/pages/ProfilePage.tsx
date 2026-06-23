@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWorkoutStore } from '../store/workoutStore';
 import { useProfileStore, type Units } from '../store/profileStore';
-import { computePRs } from '../utils/prs';
 import BodyweightChart from '../components/profile/BodyweightChart';
 import MacroCalculator from '../components/profile/MacroCalculator';
+import PersonalRecords from '../components/profile/PersonalRecords';
 
 function todayKey(): string {
   const d = new Date();
@@ -60,8 +60,6 @@ export default function ProfilePage() {
     removeBodyweight,
   } = useProfileStore();
 
-  const prs = useMemo(() => computePRs(workouts), [workouts]);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [macroCalcOpen, setMacroCalcOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -188,70 +186,7 @@ export default function ProfilePage() {
       </section>
 
       {/* SECTION 2 — Personal Records */}
-      <section>
-        <h2 className="mb-2 text-lg font-semibold text-gray-100">Personal Records</h2>
-        {prs.length === 0 ? (
-          <div className={`${card} text-center text-sm text-gray-500`}>
-            Log some workouts to start tracking PRs.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {prs.map((pr) => {
-              const isOpen = expanded === pr.exercise;
-              return (
-                <div key={pr.exercise} className={card}>
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(isOpen ? null : pr.exercise)}
-                    className="flex w-full items-center justify-between gap-3 text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-gray-100">{pr.exercise}</p>
-                      <p className="text-xs text-gray-500">
-                        {pr.weight} {pr.unit} × {pr.reps} · {formatDate(pr.date)}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2 text-right">
-                      <div>
-                        <p className="text-sm font-bold text-[#6C63FF]">
-                          {Math.round(pr.e1rm)} {pr.unit}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-wide text-gray-500">est. 1RM</p>
-                      </div>
-                      <span className="text-gray-500">{isOpen ? '▴' : '▾'}</span>
-                    </div>
-                  </button>
-
-                  {isOpen && (
-                    <div className="mt-3 border-t border-[#2A2A2A] pt-3">
-                      {pr.history.length <= 1 ? (
-                        <p className="text-xs text-gray-500">No earlier attempts logged yet.</p>
-                      ) : (
-                        <ul className="space-y-1">
-                          {pr.history.map((h, i) => (
-                            <li
-                              key={`${h.date}-${i}`}
-                              className="flex items-center justify-between text-xs text-gray-400"
-                            >
-                              <span>{formatDate(h.date)}</span>
-                              <span>
-                                {h.weight} {h.unit} × {h.reps}
-                                <span className="ml-2 text-gray-600">
-                                  ~{Math.round(h.e1rm)} {h.unit}
-                                </span>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <PersonalRecords workouts={workouts} />
 
       {/* SECTION 3 — Bodyweight */}
       <section>

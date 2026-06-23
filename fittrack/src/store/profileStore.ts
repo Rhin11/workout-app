@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 
 export type Units = 'lbs' | 'kg';
 
+/** Default "main lifts" featured at the top of Personal Records (user-editable). */
+export const DEFAULT_MAIN_LIFTS = ['Back Squat', 'Bench Press', 'Deadlift', 'Overhead Press'];
+
 export interface BodyweightEntry {
   id: string;
   /** YYYY-MM-DD */
@@ -16,11 +19,14 @@ interface ProfileState {
   photoDataUrl: string | null;
   units: Units;
   bodyweights: BodyweightEntry[];
+  /** Exercise names featured at the top of Personal Records. */
+  mainLifts: string[];
   setDisplayName: (name: string) => void;
   setPhoto: (dataUrl: string | null) => void;
   setUnits: (units: Units) => void;
   addBodyweight: (date: string, weight: number) => void;
   removeBodyweight: (id: string) => void;
+  setMainLifts: (lifts: string[]) => void;
 }
 
 const uid = () => crypto.randomUUID();
@@ -32,6 +38,7 @@ export const useProfileStore = create<ProfileState>()(
       photoDataUrl: null,
       units: 'lbs',
       bodyweights: [],
+      mainLifts: DEFAULT_MAIN_LIFTS,
 
       setDisplayName: (name) => set({ displayName: name }),
       setPhoto: (dataUrl) => set({ photoDataUrl: dataUrl }),
@@ -47,6 +54,20 @@ export const useProfileStore = create<ProfileState>()(
 
       removeBodyweight: (id) =>
         set({ bodyweights: get().bodyweights.filter((b) => b.id !== id) }),
+
+      setMainLifts: (lifts) => {
+        // Dedupe case-insensitively, preserve order, drop blanks.
+        const seen = new Set<string>();
+        const cleaned: string[] = [];
+        for (const lift of lifts) {
+          const name = lift.trim();
+          const key = name.toLowerCase();
+          if (!name || seen.has(key)) continue;
+          seen.add(key);
+          cleaned.push(name);
+        }
+        set({ mainLifts: cleaned });
+      },
     }),
     { name: 'forge-profile' },
   ),
