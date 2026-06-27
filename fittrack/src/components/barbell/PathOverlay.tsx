@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { PathPoint, StickingPoint } from '../../utils/barbellAnalysis';
 import { segmentSpeeds, speedColor } from '../../utils/barbellAnalysis';
+import VideoPathOverlay from './VideoPathOverlay';
 
 interface Props {
   path: PathPoint[];
@@ -21,15 +22,6 @@ interface ColoredSegment {
   color: string;
 }
 
-function mid(a: PathPoint, b: PathPoint) {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
-/**
- * Build smoothed, per-segment-colored strokes through the path using
- * quadratic curves between segment midpoints (control point = the shared
- * vertex). Each sub-segment is colored by local bar speed.
- */
 function buildSegments(path: PathPoint[]): ColoredSegment[] {
   if (path.length < 2) return [];
 
@@ -40,12 +32,11 @@ function buildSegments(path: PathPoint[]): ColoredSegment[] {
 
   const segments: ColoredSegment[] = [];
   for (let i = 1; i < path.length; i += 1) {
-    const start = i === 1 ? path[0] : mid(path[i - 1], path[i]);
-    const end = i === path.length - 1 ? path[i] : mid(path[i], path[i + 1]);
-    const ctrl = path[i];
+    const a = path[i - 1];
+    const b = path[i];
     const normalized = (speeds[i - 1] - min) / range;
     segments.push({
-      d: `M ${start.x} ${start.y} Q ${ctrl.x} ${ctrl.y} ${end.x} ${end.y}`,
+      d: `M ${a.x} ${a.y} L ${b.x} ${b.y}`,
       color: speedColor(normalized),
     });
   }
@@ -59,6 +50,7 @@ export default function PathOverlay({
   videoWidth,
   videoHeight,
 }: Props) {
+  const imgRef = useRef<HTMLImageElement>(null);
   const segments = useMemo(() => buildSegments(path), [path]);
 
   const markers = useMemo(
@@ -86,63 +78,90 @@ export default function PathOverlay({
       >
         {backgroundUrl ? (
           <img
+            ref={imgRef}
             src={backgroundUrl}
             alt="First frame of the lift"
-            className={`h-full w-full opacity-80 ${hasDims ? 'object-fill' : 'object-cover'}`}
+            className={`h-full w-full opacity-80 ${hasDims ? 'object-contain' : 'object-cover'}`}
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a]" />
         )}
 
-        <svg
-          viewBox={`0 0 ${vbW} ${vbH}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 h-full w-full"
-        >
-          {/* Soft underlay so the colored path reads on any background. */}
-          {segments.map((seg, i) => (
-            <path
-              key={`u-${i}`}
-              d={seg.d}
-              fill="none"
-              stroke="black"
-              strokeOpacity={0.35}
-              strokeWidth={2.6 * k}
-              strokeLinecap="round"
-            />
-          ))}
-          {segments.map((seg, i) => (
-            <path
-              key={`s-${i}`}
-              d={seg.d}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={1.8 * k}
-              strokeLinecap="round"
-            />
-          ))}
+        {hasDims ? (
+          <VideoPathOverlay mediaRef={imgRef} videoWidth={vbW} videoHeight={vbH}>
+            {segments.map((seg, i) => (
+              <path
+                key={`u-${i}`}
+                d={seg.d}
+                fill="none"
+                stroke="black"
+                strokeOpacity={0.35}
+                strokeWidth={2.6 * k}
+                strokeLinecap="round"
+              />
+            ))}
+            {segments.map((seg, i) => (
+              <path
+                key={`s-${i}`}
+                d={seg.d}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={1.8 * k}
+                strokeLinecap="round"
+              />
+            ))}
 
-          {/* Sticking points: pulsing red markers. */}
-          {markers.map((p, i) => (
-            <g key={`m-${i}`}>
-              <circle cx={p.x} cy={p.y} r={3.5 * k} fill="#ef4444" fillOpacity={0.4}>
-                <animate
-                  attributeName="r"
-                  values={`${3.5 * k};${6.5 * k};${3.5 * k}`}
-                  dur="1.4s"
-                  repeatCount="indefinite"
-                />
-                <animate
-                  attributeName="fill-opacity"
-                  values="0.5;0;0.5"
-                  dur="1.4s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-              <circle cx={p.x} cy={p.y} r={2 * k} fill="#ef4444" stroke="white" strokeWidth={0.6 * k} />
-            </g>
-          ))}
-        </svg>
+            {markers.map((p, i) => (
+              <g key={`m-${i}`}>
+                <circle cx={p.x} cy={p.y} r={3.5 * k} fill="#ef4444" fillOpacity={0.4}>
+                  <animate
+                    attributeName="r"
+                    values={`${3.5 * k};${6.5 * k};${3.5 * k}`}
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="fill-opacity"
+                    values="0.5;0;0.5"
+                    dur="1.4s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle cx={p.x} cy={p.y} r={2 * k} fill="#ef4444" stroke="white" strokeWidth={0.6 * k} />
+              </g>
+            ))}
+          </VideoPathOverlay>
+        ) : (
+          <svg viewBox={`0 0 ${vbW} ${vbH}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+            {segments.map((seg, i) => (
+              <path
+                key={`u-${i}`}
+                d={seg.d}
+                fill="none"
+                stroke="black"
+                strokeOpacity={0.35}
+                strokeWidth={2.6 * k}
+                strokeLinecap="round"
+              />
+            ))}
+            {segments.map((seg, i) => (
+              <path
+                key={`s-${i}`}
+                d={seg.d}
+                fill="none"
+                stroke={seg.color}
+                strokeWidth={1.8 * k}
+                strokeLinecap="round"
+              />
+            ))}
+            {markers.map((p, i) => (
+              <g key={`m-${i}`}>
+                <circle cx={p.x} cy={p.y} r={3.5 * k} fill="#ef4444" fillOpacity={0.4} />
+                <circle cx={p.x} cy={p.y} r={2 * k} fill="#ef4444" stroke="white" strokeWidth={0.6 * k} />
+              </g>
+            ))}
+          </svg>
+        )}
       </div>
 
       {/* Legend */}
