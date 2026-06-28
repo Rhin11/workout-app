@@ -48,46 +48,38 @@ export interface SeedPoint {
   y: number;
 }
 
-/** Optional inputs for analysis: where the bar is, and which segment to analyze. */
-export interface AnalyzeOptions {
-  /** Tapped bar location (video pixels) seeding the tracker. */
-  seed?: SeedPoint | null;
-  /** Seconds into the video where the bar was tapped. */
-  seedTime?: number | null;
-  /** Trim: start of the working set (ms into the video). Defaults to seed time. */
-  startMs?: number | null;
-  /** Trim: end of the working set (ms into the video). Defaults to the clip end. */
-  endMs?: number | null;
+/** Two user-marked bar positions defining the rep's range of motion. */
+export interface RomMarkers {
+  pointA: SeedPoint;
+  pointAFrame: number;
+  /** Seconds into the video when A was placed (for accurate frame sync). */
+  pointATime: number;
+  pointB: SeedPoint;
+  pointBFrame: number;
+  pointBTime: number;
 }
 
 /**
  * THE SINGLE DATA SOURCE.
  *
- * POSTs the lift video (plus an optional seed tap and start/end trim, in video
- * pixels / ms) to the CV service and returns the parsed analysis. The tracker
- * follows the bar across the WHOLE selected segment, so every rep is captured.
- * The return shape is unchanged, so the results UI (Path + Replay) renders as-is.
+ * POSTs the lift video (plus optional A/B ROM markers) to the CV service and
+ * returns the parsed analysis. With ROM markers the tracker uses the forgiving
+ * anchor path; without them it falls back to auto-detection.
  */
 export async function getAnalysis(
   video: Blob,
-  opts?: AnalyzeOptions | null,
+  rom?: RomMarkers | null,
 ): Promise<Analysis> {
   const form = new FormData();
   form.append('video', video, 'lift.webm');
-  if (opts?.seed) {
-    form.append('seed_x', String(Math.round(opts.seed.x)));
-    form.append('seed_y', String(Math.round(opts.seed.y)));
+  if (rom) {
+    form.append('point_a_x', String(Math.round(rom.pointA.x)));
+    form.append('point_a_y', String(Math.round(rom.pointA.y)));
+    form.append('point_a_time', String(rom.pointATime));
+    form.append('point_b_x', String(Math.round(rom.pointB.x)));
+    form.append('point_b_y', String(Math.round(rom.pointB.y)));
+    form.append('point_b_time', String(rom.pointBTime));
   }
-  // Default the analysis start to the moment the bar was tapped, so the tracker
-  // seeds on the bar exactly where the user marked it.
-  const startMs =
-    opts?.startMs != null
-      ? opts.startMs
-      : opts?.seedTime != null
-        ? Math.round(opts.seedTime * 1000)
-        : null;
-  if (startMs != null) form.append('start_ms', String(Math.max(0, Math.round(startMs))));
-  if (opts?.endMs != null) form.append('end_ms', String(Math.round(opts.endMs)));
 
   let res: Response;
   try {

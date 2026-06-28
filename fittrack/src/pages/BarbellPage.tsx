@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import AnalysisHistory from '../components/barbell/AnalysisHistory';
 import CameraView, { type CapturedVideo } from '../components/barbell/CameraView';
 import BarPathResult from '../components/barbell/BarPathResult';
-import SeedPicker, { type SeedSelection } from '../components/barbell/SeedPicker';
+import SeedPicker from '../components/barbell/SeedPicker';
 import StatsRow from '../components/barbell/StatsRow';
 import StickingPointsCard from '../components/barbell/StickingPointsCard';
 import TagAnalysisCard, { type AnalysisTag } from '../components/barbell/TagAnalysisCard';
 import TagAnalysisModal from '../components/barbell/TagAnalysisModal';
 import { useBarbellStore, type BarbellSession } from '../store/barbellStore';
-import { getAnalysis, type Analysis } from '../utils/barbellAnalysis';
+import { getAnalysis, type Analysis, type RomMarkers } from '../utils/barbellAnalysis';
 import { sessionDate } from '../utils/barbellTrends';
 
 function formatMetaDate(iso: string): string {
@@ -24,9 +24,7 @@ export default function BarbellPage() {
   const updateSession = useBarbellStore((s) => s.updateSession);
 
   const [captured, setCaptured] = useState<CapturedVideo | null>(null);
-  const [seed, setSeed] = useState<SeedSelection | null>(null);
-  const [startMs, setStartMs] = useState<number | null>(null);
-  const [endMs, setEndMs] = useState<number | null>(null);
+  const [rom, setRom] = useState<RomMarkers | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -52,9 +50,7 @@ export default function BarbellPage() {
     if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
     lastObjectUrl.current = video.videoUrl;
     setCaptured(video);
-    setSeed(null);
-    setStartMs(null);
-    setEndMs(null);
+    setRom(null);
     setAnalysis(null);
     setAnalyzeError(null);
     setViewedSession(null);
@@ -67,9 +63,7 @@ export default function BarbellPage() {
     if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
     lastObjectUrl.current = null;
     setCaptured(null);
-    setSeed(null);
-    setStartMs(null);
-    setEndMs(null);
+    setRom(null);
     setAnalysis(null);
     setAnalyzeError(null);
     setBackground(null);
@@ -82,17 +76,9 @@ export default function BarbellPage() {
     setAnalyzing(true);
     setAnalyzeError(null);
     try {
-      // getAnalysis() is the single data source — it POSTs to the CV service.
-      // Results are shown unsaved; the user tags + saves them via TagAnalysisCard.
-      const result = await getAnalysis(captured.blob, {
-        seed: seed?.point ?? null,
-        seedTime: seed?.time ?? null,
-        startMs,
-        endMs,
-      });
+      const result = await getAnalysis(captured.blob, rom);
       setAnalysis(result);
       setViewedSession(null);
-      // The captured video matches this analysis — enable the Replay view.
       setResultVideoUrl(captured.videoUrl ?? null);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : 'Analysis failed. Please try again.');
@@ -119,9 +105,7 @@ export default function BarbellPage() {
     setBackground(session.thumbnail || null);
     setViewedSession(session);
     setEditingViewed(false);
-    // Saved sessions don't store the video, so only the static view is available.
     setResultVideoUrl(null);
-    // Keep any in-progress capture; just show the chosen historical result.
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
@@ -144,8 +128,8 @@ export default function BarbellPage() {
           Barbell Path Analyzer
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          Record or upload your set, tap the barbell to mark it, then (optionally) set a start and
-          end to trim out the walkout and re-rack. Analyze to trace every rep's bar path.
+          Record or upload your set, then scrub the video and mark point A and point B at opposite
+          ends of a rep. The tracker follows the bar through the full movement.
         </p>
         <p className="mt-3 flex items-start gap-2 text-sm text-gray-500">
           <span className="text-[#6C63FF]">💡</span>
@@ -162,19 +146,14 @@ export default function BarbellPage() {
           videoUrl={captured?.videoUrl ?? null}
         />
 
-        {/* Seed + trim step: tap the bar and optionally set start/end (optional). */}
         {captured && !analysis && captured.videoUrl && (
           <div className="mt-5">
             <SeedPicker
               videoUrl={captured.videoUrl}
               videoWidth={captured.width}
               videoHeight={captured.height}
-              seed={seed}
-              onSeed={setSeed}
-              startMs={startMs}
-              endMs={endMs}
-              onStartMs={setStartMs}
-              onEndMs={setEndMs}
+              rom={rom}
+              onRom={setRom}
             />
           </div>
         )}
@@ -257,7 +236,6 @@ export default function BarbellPage() {
 
           <StickingPointsCard stickingPoints={analysis.sticking_points} />
 
-          {/* Tag step: only for a fresh, not-yet-saved analysis. */}
           {!viewedSession && <TagAnalysisCard onSave={handleSaveTag} />}
         </>
       )}
