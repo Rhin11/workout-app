@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import type { StickingPoint } from '../../utils/barbellAnalysis';
-import { tipForPosition } from '../../utils/barbellAnalysis';
+import { consolidateStickingPoints, tipForLift } from '../../utils/barbellAnalysis';
 
 interface Props {
   stickingPoints: StickingPoint[];
+  /** Tagged exercise name — drives lift-specific advice. Undefined = neutral tips. */
+  exerciseName?: string | null;
 }
 
 function formatTimestamp(ms: number): string {
@@ -12,18 +15,20 @@ function formatTimestamp(ms: number): string {
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
-export default function StickingPointsCard({ stickingPoints }: Props) {
+export default function StickingPointsCard({ stickingPoints, exerciseName }: Props) {
+  // Merge clustered detections so one stall zone reads as one point, not four.
+  const points = useMemo(() => consolidateStickingPoints(stickingPoints), [stickingPoints]);
   return (
     <section className="rounded-xl border border-[#2A2A2A] bg-[#141414] p-5">
       <h2 className="text-sm font-semibold text-gray-100">Sticking points</h2>
 
-      {stickingPoints.length === 0 ? (
+      {points.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">
           No sticking points detected — the bar moved smoothly through the lift. Nice work.
         </p>
       ) : (
         <ul className="mt-3 space-y-3">
-          {stickingPoints.map((sp, i) => (
+          {points.map((sp, i) => (
             <li
               key={`${sp.frame}-${i}`}
               className="rounded-lg border border-[#2A2A2A] bg-[#0F0F0F] p-3"
@@ -37,7 +42,9 @@ export default function StickingPointsCard({ stickingPoints }: Props) {
                   @ {formatTimestamp(sp.time_ms)}
                 </span>
               </div>
-              <p className="mt-1.5 text-sm text-gray-400">{tipForPosition(sp.position_pct)}</p>
+              <p className="mt-1.5 text-sm text-gray-400">
+                {tipForLift(exerciseName, sp.position_pct)}
+              </p>
             </li>
           ))}
         </ul>

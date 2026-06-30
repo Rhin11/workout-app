@@ -237,7 +237,10 @@ export default function BarbellPage() {
 
           <StatsRow analysis={analysis} />
 
-          <StickingPointsCard stickingPoints={analysis.sticking_points} />
+          <StickingPointsCard
+            stickingPoints={analysis.sticking_points}
+            exerciseName={viewedSession?.exerciseName}
+          />
 
           {/* Tag step: only for a fresh, not-yet-saved analysis. */}
           {!viewedSession && <TagAnalysisCard onSave={handleSaveTag} />}

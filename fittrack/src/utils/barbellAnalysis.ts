@@ -260,15 +260,128 @@ export const ZONE_LABEL: Record<StickingZone, string> = {
   lockout: 'near lockout',
 };
 
-const ZONE_TIP: Record<StickingZone, string> = {
-  bottom: 'Sticking near the bottom — focus on staying tight and driving out of the hole.',
-  mid: 'Mid-range sticking point — often weak glutes/hips or loss of tension.',
-  lockout: 'Sticking near lockout — often a triceps (press) or upper-back/lockout weakness.',
+/** Lift families that get tailored sticking-point advice. */
+export type LiftCategory = 'bench' | 'squat' | 'deadlift' | 'ohp' | 'unknown';
+
+/**
+ * Classify a tagged exercise name into a lift family. Order matters: "bench
+ * press" and "overhead press" both contain "press", so the more specific names
+ * are checked first.
+ */
+export function liftCategory(exerciseName: string | null | undefined): LiftCategory {
+  const n = (exerciseName ?? '').toLowerCase();
+  if (!n) return 'unknown';
+  if (n.includes('bench')) return 'bench'; // bench press, incline bench, etc.
+  if (n.includes('deadlift')) return 'deadlift'; // conventional / Romanian / sumo
+  if (n.includes('squat')) return 'squat'; // back / front squat
+  if (
+    n.includes('overhead press') ||
+    n.includes('push press') ||
+    n.includes('military press') ||
+    n.includes('shoulder press') ||
+    n.includes('ohp')
+  ) {
+    return 'ohp';
+  }
+  return 'unknown';
+}
+
+type ConcentricZone = 'bottom' | 'mid' | 'top';
+
+/** Bottom (0–33%), mid (33–66%), top (66–100%) of the concentric/upward phase. */
+function concentricZone(positionPct: number): ConcentricZone {
+  if (positionPct <= 33) return 'bottom';
+  if (positionPct <= 66) return 'mid';
+  return 'top';
+}
+
+const LIFT_TIPS: Record<Exclude<LiftCategory, 'unknown'>, Record<ConcentricZone, string>> = {
+  bench: {
+    bottom: 'Sticking off the chest — often weak chest/pecs or a loss of tightness at the bottom.',
+    mid: 'Mid-range sticking point — commonly a chest-to-triceps transition weakness.',
+    top: 'Sticking near lockout — often weak triceps.',
+  },
+  squat: {
+    bottom: 'Sticking out of the hole — often weak quads or loss of tightness at the bottom.',
+    mid: 'Mid-range sticking point — commonly weak glutes/hips or loss of tension.',
+    top: 'Sticking near the top — often a grind issue; usually not a strength limiter.',
+  },
+  deadlift: {
+    bottom: 'Sticking off the floor — often weak quads/leg drive or back not set.',
+    mid: 'Sticking at the knees — commonly weak hamstrings or upper-back rounding.',
+    top: 'Sticking at lockout — often weak glutes or lats not engaged.',
+  },
+  ohp: {
+    bottom: 'Sticking off the shoulders — often weak front delts.',
+    mid: 'Mid-range sticking point — commonly a delt-to-triceps transition weakness.',
+    top: 'Sticking near lockout — often weak triceps or upper-back stability.',
+  },
 };
 
-/** Auto-generated coaching tip based on where in the rep the sticking occurs. */
-export function tipForPosition(positionPct: number): string {
-  return ZONE_TIP[stickingZone(positionPct)];
+/**
+ * Lift-aware coaching tip for a sticking point: the muscle/cause explanation is
+ * specific to the tagged exercise, while the zone (bottom/mid/top) comes from
+ * where in the concentric phase it occurred. Untagged or unrecognized lifts get
+ * a neutral, lift-agnostic message (never squat/glute advice by default).
+ */
+export function tipForLift(exerciseName: string | null | undefined, positionPct: number): string {
+  const cat = liftCategory(exerciseName);
+  if (cat === 'unknown') {
+    return `Sticking point at ${Math.round(
+      positionPct,
+    )}% of the rep — a slowdown here suggests a weak point in this range.`;
+  }
+  return LIFT_TIPS[cat][concentricZone(positionPct)];
+}
+
+// Detected points within this rep-position range AND time gap belong to the same
+// stall zone and are merged into one for display.
+const STICK_MERGE_POSITION_PCT = 12;
+const STICK_MERGE_TIME_MS = 1000;
+
+/**
+ * Collapse clustered sticking points into one per stall zone for display only.
+ *
+ * Consecutive points close in BOTH rep position (~12%) and time (~1s) are merged
+ * into a single representative point at the cluster's average position (keeping a
+ * real member's frame/time for the marker + timestamp). Genuinely separate stalls
+ * (e.g. off the chest vs. near lockout) stay distinct. Does not touch tracking,
+ * the path, or how positions are computed.
+ */
+export function consolidateStickingPoints(points: StickingPoint[]): StickingPoint[] {
+  if (points.length <= 1) return [...points];
+
+  const sorted = [...points].sort((a, b) => a.time_ms - b.time_ms);
+  const clusters: StickingPoint[][] = [];
+  let current: StickingPoint[] = [sorted[0]];
+  let meanPos = sorted[0].position_pct;
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const p = sorted[i];
+    const prev = current[current.length - 1];
+    const closePos = Math.abs(p.position_pct - meanPos) <= STICK_MERGE_POSITION_PCT;
+    const closeTime = p.time_ms - prev.time_ms <= STICK_MERGE_TIME_MS;
+    if (closePos && closeTime) {
+      current.push(p);
+      meanPos = current.reduce((s, q) => s + q.position_pct, 0) / current.length;
+    } else {
+      clusters.push(current);
+      current = [p];
+      meanPos = p.position_pct;
+    }
+  }
+  clusters.push(current);
+
+  return clusters.map((cluster) => {
+    if (cluster.length === 1) return cluster[0];
+    const avg = cluster.reduce((s, q) => s + q.position_pct, 0) / cluster.length;
+    // Representative member = the one nearest the cluster's average position, so
+    // its frame/time (and any extra fields) stay real; report at the avg position.
+    const rep = cluster.reduce((best, q) =>
+      Math.abs(q.position_pct - avg) < Math.abs(best.position_pct - avg) ? q : best,
+    );
+    return { ...rep, position_pct: Math.round(avg) };
+  });
 }
 
 function round1(n: number): number {
