@@ -63,7 +63,7 @@ export default function SeedPicker({ firstFrameDataUrl, seed, onSeed }: Props) {
         />
         {marker && (
           <span
-            className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#6C63FF]/60 shadow"
+            className="pointer-events-none absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#6C63FF]/60 shadow"
             style={{ left: `${marker.fx * 100}%`, top: `${marker.fy * 100}%` }}
           />
         )}
