@@ -1,5 +1,5 @@
 fastapi
 uvicorn[standard]
-opencv-contrib-python
+opencv-python
 numpy
 python-multipart

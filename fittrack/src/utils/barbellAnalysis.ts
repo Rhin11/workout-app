@@ -19,8 +19,6 @@ export interface StickingPoint {
   frame: number;
   time_ms: number;
   position_pct: number;
-  /** Which rep (1-based) this sticking point occurred in. */
-  rep?: number;
 }
 
 export interface Analysis {
@@ -36,8 +34,6 @@ export interface Analysis {
    */
   video_width?: number;
   video_height?: number;
-  /** Native video frame rate — used to sync replay overlay to frames. */
-  fps?: number;
 }
 
 /** Base URL of the standalone CV service (see cv-service/README.md). */
@@ -48,37 +44,19 @@ export interface SeedPoint {
   y: number;
 }
 
-/** Two user-marked bar positions defining the rep's range of motion. */
-export interface RomMarkers {
-  pointA: SeedPoint;
-  pointAFrame: number;
-  /** Seconds into the video when A was placed (for accurate frame sync). */
-  pointATime: number;
-  pointB: SeedPoint;
-  pointBFrame: number;
-  pointBTime: number;
-}
-
 /**
  * THE SINGLE DATA SOURCE.
  *
- * POSTs the lift video (plus optional A/B ROM markers) to the CV service and
- * returns the parsed analysis. With ROM markers the tracker uses the forgiving
- * anchor path; without them it falls back to auto-detection.
+ * POSTs the lift video (and an optional seed point, in video pixels) to the CV
+ * service and returns the parsed analysis. The return shape is identical to the
+ * Stage-1 mock, so the results UI renders unchanged.
  */
-export async function getAnalysis(
-  video: Blob,
-  rom?: RomMarkers | null,
-): Promise<Analysis> {
+export async function getAnalysis(video: Blob, seed?: SeedPoint | null): Promise<Analysis> {
   const form = new FormData();
   form.append('video', video, 'lift.webm');
-  if (rom) {
-    form.append('point_a_x', String(Math.round(rom.pointA.x)));
-    form.append('point_a_y', String(Math.round(rom.pointA.y)));
-    form.append('point_a_time', String(rom.pointATime));
-    form.append('point_b_x', String(Math.round(rom.pointB.x)));
-    form.append('point_b_y', String(Math.round(rom.pointB.y)));
-    form.append('point_b_time', String(rom.pointBTime));
+  if (seed) {
+    form.append('seed_x', String(Math.round(seed.x)));
+    form.append('seed_y', String(Math.round(seed.y)));
   }
 
   let res: Response;

@@ -31,7 +31,6 @@ export default function StickingPointsCard({ stickingPoints }: Props) {
               <div className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2 text-sm font-medium text-gray-200">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
-                  {sp.rep != null && <span className="text-gray-400">Rep {sp.rep} ·</span>}
                   {sp.position_pct}% through the rep
                 </span>
                 <span className="shrink-0 text-xs tabular-nums text-gray-500">
