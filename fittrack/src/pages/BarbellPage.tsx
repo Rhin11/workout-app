@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AnalysisHistory from '../components/barbell/AnalysisHistory';
 import CameraView, { type CapturedVideo } from '../components/barbell/CameraView';
-import PathOverlay from '../components/barbell/PathOverlay';
+import BarPathResult from '../components/barbell/BarPathResult';
 import SeedPicker from '../components/barbell/SeedPicker';
 import StatsRow from '../components/barbell/StatsRow';
 import StickingPointsCard from '../components/barbell/StickingPointsCard';
@@ -29,6 +29,9 @@ export default function BarbellPage() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [background, setBackground] = useState<string | null>(null);
+  // Object URL of the video backing the CURRENT analysis (enables the Replay
+  // view). Only set for a just-analyzed lift — saved sessions store no video.
+  const [resultVideoUrl, setResultVideoUrl] = useState<string | null>(null);
   // The saved session currently being viewed. Null while a fresh analysis is
   // still untagged/unsaved (the tag form is shown instead).
   const [viewedSession, setViewedSession] = useState<BarbellSession | null>(null);
@@ -53,6 +56,7 @@ export default function BarbellPage() {
     setViewedSession(null);
     setEditingViewed(false);
     setBackground(video.firstFrameDataUrl || null);
+    setResultVideoUrl(null);
   };
 
   const handleReset = () => {
@@ -64,6 +68,7 @@ export default function BarbellPage() {
     setAnalyzeError(null);
     setBackground(null);
     setViewedSession(null);
+    setResultVideoUrl(null);
   };
 
   const handleAnalyze = async () => {
@@ -76,6 +81,8 @@ export default function BarbellPage() {
       const result = await getAnalysis(captured.blob, seed);
       setAnalysis(result);
       setViewedSession(null);
+      // The captured video matches this analysis — enable the Replay view.
+      setResultVideoUrl(captured.videoUrl ?? null);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : 'Analysis failed. Please try again.');
     } finally {
@@ -101,6 +108,8 @@ export default function BarbellPage() {
     setBackground(session.thumbnail || null);
     setViewedSession(session);
     setEditingViewed(false);
+    // Saved sessions don't store the video, so only the static view is available.
+    setResultVideoUrl(null);
     // Keep any in-progress capture; just show the chosen historical result.
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -216,12 +225,13 @@ export default function BarbellPage() {
 
           <section className={card}>
             <h2 className="mb-4 text-sm font-semibold text-gray-100">Bar path</h2>
-            <PathOverlay
+            <BarPathResult
               path={analysis.path}
               stickingPoints={analysis.sticking_points}
               backgroundUrl={background}
               videoWidth={analysis.video_width}
               videoHeight={analysis.video_height}
+              videoUrl={resultVideoUrl}
             />
           </section>
 
