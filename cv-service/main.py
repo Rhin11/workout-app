@@ -7,8 +7,14 @@ and receives the traced bar path + stats.
 
     uvicorn main:app --reload --port 8000
 """
+import logging
 import os
 import tempfile
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware

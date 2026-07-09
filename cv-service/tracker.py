@@ -11,8 +11,13 @@ frontend can scale the overlay onto the displayed first frame.
 """
 from __future__ import annotations
 
+import logging
+import time
+
 import cv2
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # Standard Olympic plate diameter (meters) — used to convert pixels → meters.
 OLYMPIC_PLATE_DIAMETER_M = 0.45
@@ -39,6 +44,16 @@ MIN_TRACKED_FRAMES = 5
 # Path/velocity smoothing window (frames).
 SMOOTH_WINDOW = 5
 
+# ── Performance tuning (does not change path/sticking-point logic) ────────────
+# Downscale frames for CSRT tracking when the source exceeds this longest side.
+MAX_TRACK_DIMENSION = 1280
+
+# Process at most this many source frames per second (skip extras on high-fps video).
+MAX_TRACKING_FPS = 30.0
+
+# Stop tracking after the bar has been still this long once movement has started.
+REST_STILL_SECONDS = 3.0
+
 
 class TrackingError(Exception):
     """Raised when the barbell cannot be located/tracked. Message is user-facing."""
@@ -53,6 +68,49 @@ def _create_csrt_tracker():
     raise TrackingError(
         "CSRT tracker unavailable — install a recent 'opencv-python' build."
     )
+
+
+def _compute_track_scale(width: int, height: int) -> float:
+    """Return a scale factor ≤ 1.0 to fit the longest side within MAX_TRACK_DIMENSION."""
+    max_dim = max(width, height)
+    if max_dim <= MAX_TRACK_DIMENSION:
+        return 1.0
+    return MAX_TRACK_DIMENSION / max_dim
+
+
+def _resize_for_tracking(frame_bgr: np.ndarray, scale: float) -> np.ndarray:
+    """Downscale a frame for CSRT tracking; returns the input unchanged when scale is 1."""
+    if scale >= 1.0:
+        return frame_bgr
+    h, w = frame_bgr.shape[:2]
+    new_w = max(1, int(round(w * scale)))
+    new_h = max(1, int(round(h * scale)))
+    return cv2.resize(frame_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+
+def _scale_bbox_to_track(bbox: tuple, scale: float) -> tuple[int, int, int, int]:
+    """Map a full-resolution bbox into downscaled tracking space."""
+    x, y, w, h = bbox
+    return (
+        int(round(x * scale)),
+        int(round(y * scale)),
+        max(1, int(round(w * scale))),
+        max(1, int(round(h * scale))),
+    )
+
+
+def _scale_box_to_full(box, scale: float) -> tuple[float, float, float, float]:
+    """Map a CSRT box from tracking space back to full-resolution video pixels."""
+    bx, by, bw, bh = box
+    inv = 1.0 / scale
+    return bx * inv, by * inv, bw * inv, bh * inv
+
+
+def _compute_frame_stride(fps: float) -> int:
+    """How many source frames to advance between tracker updates."""
+    if fps <= MAX_TRACKING_FPS:
+        return 1
+    return max(1, int(round(fps / MAX_TRACKING_FPS)))
 
 
 def _detect_circles(frame_bgr: np.ndarray, width: int):
@@ -162,6 +220,8 @@ def _concentric_phases(ys: np.ndarray, threshold: float):
 
 
 def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
+    t_total_start = time.perf_counter()
+
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise TrackingError("Couldn't open the video file.")
@@ -171,6 +231,8 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
         fps = 30.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_source_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration_s = total_source_frames / fps if total_source_frames > 0 else 0.0
 
     ok, first = cap.read()
     if not ok or first is None:
@@ -179,7 +241,27 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
     if not width or not height:
         height, width = first.shape[:2]
 
+    track_scale = _compute_track_scale(width, height)
+    frame_stride = _compute_frame_stride(fps)
+    effective_fps = fps / frame_stride
+
+    logger.info(
+        "analyze_video: %dx%d @ %.1f fps (%.1fs, ~%d source frames)",
+        width,
+        height,
+        fps,
+        duration_s,
+        total_source_frames,
+    )
+    logger.info(
+        "  perf settings: track_scale=%.3f, frame_stride=%d (effective %.1f fps)",
+        track_scale,
+        frame_stride,
+        effective_fps,
+    )
+
     # ── Seed the tracker + estimate plate diameter for scale ──────────────────
+    t_seed_start = time.perf_counter()
     plate_diameter_px = None
     circles = _detect_circles(first, width)
 
@@ -205,9 +287,11 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
             "Couldn't track the barbell — try better lighting/contrast or tap the bar to help"
         )
 
-    # ── Track across all frames ──────────────────────────────────────────────
+    # ── Track across frames (downscaled + optionally subsampled) ─────────────
     tracker = _create_csrt_tracker()
-    tracker.init(first, tuple(int(v) for v in bbox))
+    track_first = _resize_for_tracking(first, track_scale)
+    track_bbox = _scale_bbox_to_track(bbox, track_scale)
+    tracker.init(track_first, track_bbox)
 
     xs: list[float] = []
     ys: list[float] = []
@@ -218,21 +302,64 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
     ys.append(y0 + h0 / 2)
     frames.append(0)
 
-    frame_idx = 1
+    t_seed_ms = (time.perf_counter() - t_seed_start) * 1000
+    t_track_start = time.perf_counter()
+
+    still_threshold_px = max(2.0, 0.005 * min(width, height))
+    if plate_diameter_px:
+        still_threshold_px = max(still_threshold_px, plate_diameter_px * 0.02)
+    min_lift_range_px = max(8.0, 0.08 * height)
+
+    movement_seen = False
+    still_video_frames = 0
+    source_frames_read = 1  # first frame already read
+    processed_frames = 1
+    early_exit = False
+
+    video_frame_idx = 1
     while True:
+        # Skip intermediate frames without decoding when subsampling.
+        for _ in range(frame_stride - 1):
+            if not cap.grab():
+                video_frame_idx = -1
+                break
+            video_frame_idx += 1
+            source_frames_read += 1
+        if video_frame_idx < 0:
+            break
+
         ok, frame = cap.read()
         if not ok or frame is None:
             break
-        updated, box = tracker.update(frame)
+        source_frames_read += 1
+
+        track_frame = _resize_for_tracking(frame, track_scale)
+        updated, box = tracker.update(track_frame)
         if not updated:
             break  # lost the bar — stop rather than emit garbage
-        bx, by, bw, bh = box
+
+        bx, by, bw, bh = _scale_box_to_full(box, track_scale)
         xs.append(bx + bw / 2)
         ys.append(by + bh / 2)
-        frames.append(frame_idx)
-        frame_idx += 1
+        frames.append(video_frame_idx)
+        processed_frames += 1
+
+        if len(ys) >= 2:
+            dy = abs(ys[-1] - ys[-2])
+            y_range = max(ys) - min(ys)
+            if dy > still_threshold_px:
+                movement_seen = True
+                still_video_frames = 0
+            elif movement_seen and y_range >= min_lift_range_px:
+                still_video_frames += frame_stride
+                if still_video_frames >= REST_STILL_SECONDS * fps:
+                    early_exit = True
+                    break
+
+        video_frame_idx += 1
 
     cap.release()
+    t_track_ms = (time.perf_counter() - t_track_start) * 1000
 
     if len(frames) < MIN_TRACKED_FRAMES:
         raise TrackingError(
@@ -240,6 +367,7 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
         )
 
     # ── Smooth the path so the overlay isn't jittery ─────────────────────────
+    t_post_start = time.perf_counter()
     xs_s = _moving_average(np.array(xs, dtype=float), SMOOTH_WINDOW)
     ys_s = _moving_average(np.array(ys, dtype=float), SMOOTH_WINDOW)
     times_ms = [int(round(f / fps * 1000)) for f in frames]
@@ -258,16 +386,19 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
         # than truly calibrated. Assume the frame height spans roughly 2 meters.
         pixels_per_meter = height / 2.0
 
-    dt = 1.0 / fps  # uniform frame spacing
+    # Time between consecutive processed samples (accounts for frame subsampling).
+    dt = frame_stride / fps
 
     # Per-frame vertical velocity (m/s); positive = upward (y decreasing).
     v_up = np.zeros(len(ys_s))
     speed_total = np.zeros(len(ys_s))
     for i in range(1, len(ys_s)):
+        frame_delta = max(1, frames[i] - frames[i - 1])
+        step_dt = frame_delta / fps
         dy_m = (ys_s[i - 1] - ys_s[i]) / pixels_per_meter
         dx_m = (xs_s[i] - xs_s[i - 1]) / pixels_per_meter
-        v_up[i] = dy_m / dt
-        speed_total[i] = np.hypot(dx_m, dy_m) / dt
+        v_up[i] = dy_m / step_dt
+        speed_total[i] = np.hypot(dx_m, dy_m) / step_dt
 
     # ── Concentric phases, reps, sticking points, stats ──────────────────────
     y_range = float(np.max(ys_s) - np.min(ys_s))
@@ -332,6 +463,27 @@ def analyze_video(video_path: str, seed_x=None, seed_y=None) -> dict:
     # Time under tension: total time the bar was actually moving.
     moving_frames = int(np.sum(speed_total > MOVEMENT_SPEED_THRESHOLD_MPS))
     time_under_tension_s = round(moving_frames * dt, 1)
+
+    t_post_ms = (time.perf_counter() - t_post_start) * 1000
+    t_total_ms = (time.perf_counter() - t_total_start) * 1000
+
+    logger.info(
+        "  seed/init: %.0f ms | tracking: %.0f ms (%d processed / %d read%s) | "
+        "post-process: %.0f ms | total: %.0f ms",
+        t_seed_ms,
+        t_track_ms,
+        processed_frames,
+        source_frames_read,
+        ", early exit on rest" if early_exit else "",
+        t_post_ms,
+        t_total_ms,
+    )
+    logger.info(
+        "  result: rep_count=%d, path_points=%d, sticking_points=%d",
+        rep_count,
+        len(path),
+        len(sticking_points),
+    )
 
     return {
         "video_width": int(width),
