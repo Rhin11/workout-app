@@ -296,7 +296,7 @@ export default function WorkoutPage() {
                   <ExerciseCard
                     key={item.exercise.id}
                     exercise={item.exercise}
-                    onAddSet={() => addSet(item.exercise.id)}
+                    onAddSet={(isWarmup) => addSet(item.exercise.id, isWarmup)}
                     onRemoveExercise={() => removeExercise(item.exercise.id)}
                     onUpdateNotes={(notes) => updateExerciseNotes(item.exercise.id, notes)}
                     onUpdateSet={(setId, updates) => updateSet(item.exercise.id, setId, updates)}

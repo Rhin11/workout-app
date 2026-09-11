@@ -1,7 +1,7 @@
 import type { WorkoutSet } from '../../store/workoutStore';
 
 interface Props {
-  setNumber: number;
+  setNumber: number | string;
   set: WorkoutSet;
   onUpdate: (updates: Partial<Pick<WorkoutSet, 'reps' | 'weight' | 'unit' | 'completed'>>) => void;
   onRemove: () => void;
@@ -9,6 +9,8 @@ interface Props {
   readOnly?: boolean;
   /** When set (superset rounds), replaces the set-number cell with this label. */
   leadingLabel?: string;
+  /** Styles the row as a warm-up set (amber accent) instead of a working set. */
+  isWarmup?: boolean;
 }
 
 export default function SetRow({
@@ -19,6 +21,7 @@ export default function SetRow({
   canRemove,
   readOnly,
   leadingLabel,
+  isWarmup = false,
 }: Props) {
   const leadCols = leadingLabel ? '6rem' : '2.5rem';
   const leadCell = leadingLabel ? (
@@ -26,12 +29,17 @@ export default function SetRow({
       {leadingLabel}
     </span>
   ) : (
-    <span className="text-center text-sm text-gray-500">{setNumber}</span>
+    <span
+      className={`text-center text-sm ${isWarmup ? 'font-semibold text-amber-500' : 'text-gray-500'}`}
+    >
+      {setNumber}
+    </span>
   );
+  const borderColor = isWarmup ? 'border-amber-900/50' : 'border-gray-800';
   if (readOnly) {
     return (
       <div
-        className={`grid items-center gap-2 border-b border-gray-800 py-2 ${
+        className={`grid items-center gap-2 border-b py-2 ${borderColor} ${
           set.completed ? 'opacity-60' : ''
         }`}
         style={{ gridTemplateColumns: `${leadCols} 1fr 1fr 2.5rem` }}
@@ -48,7 +56,7 @@ export default function SetRow({
 
   return (
     <div
-      className={`grid items-center gap-2 border-b border-gray-800 py-2 ${
+      className={`grid items-center gap-2 border-b py-2 ${borderColor} ${
         set.completed ? 'opacity-60' : ''
       }`}
       style={{ gridTemplateColumns: `${leadCols} 1fr 1fr 2.5rem 2rem` }}

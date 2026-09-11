@@ -7,6 +7,7 @@ import {
 } from '../../store/workoutStore';
 import { useRestTimer } from '../../store/restTimerStore';
 import { formatMMSS } from '../../utils/time';
+import { setLabel } from '../../utils/setLabels';
 import AskCoachButton from './AskCoachButton';
 import ExerciseInfoButton from './ExerciseInfoButton';
 import RestToggle from './RestToggle';
@@ -14,7 +15,8 @@ import SetRow from './SetRow';
 
 interface Props {
   exercise: Exercise;
-  onAddSet: () => void;
+  /** Pass true to add a warm-up set (inserted before working sets); omit/false for a working set. */
+  onAddSet: (isWarmup?: boolean) => void;
   onRemoveExercise: () => void;
   onUpdateNotes: (notes: string) => void;
   onUpdateSet: (
@@ -63,8 +65,8 @@ export default function ExerciseCard({
     if (restEnabled && restSeconds > 0) startRest(exercise.id, exercise.name, restSeconds);
   };
 
-  const handleAddSet = () => {
-    onAddSet();
+  const handleAddSet = (isWarmup: boolean) => {
+    onAddSet(isWarmup);
   };
 
   const handleUpdateSet: Props['onUpdateSet'] = (setId, updates) => {
@@ -207,7 +209,8 @@ export default function ExerciseCard({
       {exercise.sets.map((s, i) => (
         <SetRow
           key={s.id}
-          setNumber={i + 1}
+          setNumber={setLabel(exercise.sets, i)}
+          isWarmup={s.isWarmup}
           set={s}
           onUpdate={(updates) => handleUpdateSet(s.id, updates)}
           onRemove={() => onRemoveSet(s.id)}
@@ -216,13 +219,22 @@ export default function ExerciseCard({
       ))}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleAddSet}
-          className="flex-1 rounded-lg border border-dashed border-gray-700 py-2 text-sm text-gray-400 transition-colors hover:border-indigo-500 hover:text-indigo-400"
-        >
-          + Add Set
-        </button>
+        <div className="flex flex-1 gap-2">
+          <button
+            type="button"
+            onClick={() => handleAddSet(true)}
+            className="flex-1 rounded-lg border border-dashed border-amber-800/60 py-2 text-sm text-amber-500/90 transition-colors hover:border-amber-500 hover:text-amber-400"
+          >
+            + Warm-up
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAddSet(false)}
+            className="flex-1 rounded-lg border border-dashed border-gray-700 py-2 text-sm text-gray-400 transition-colors hover:border-indigo-500 hover:text-indigo-400"
+          >
+            + Add Set
+          </button>
+        </div>
 
         <div className="flex items-center gap-1 rounded-lg border border-[#2A2A2A] bg-[#141414] px-1.5 py-1">
           <RestToggle enabled={restEnabled} onToggle={onToggleRest} />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Workout } from '../../store/workoutStore';
+import { setLabel } from '../../utils/setLabels';
 import SetRow from './SetRow';
 import WorkoutSummary from './WorkoutSummary';
 
@@ -207,7 +208,8 @@ function HistoryExercise({ exercise }: { exercise: Workout['exercises'][number] 
       {exercise.sets.map((s, i) => (
         <SetRow
           key={s.id}
-          setNumber={i + 1}
+          setNumber={setLabel(exercise.sets, i)}
+          isWarmup={s.isWarmup}
           set={s}
           onUpdate={() => {}}
           onRemove={() => {}}

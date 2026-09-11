@@ -7,6 +7,8 @@ export interface WorkoutSet {
   weight: number;
   unit: 'lbs' | 'kg';
   completed: boolean;
+  /** Warm-up sets are always ordered before working sets and numbered separately (W1, W2, ...). */
+  isWarmup?: boolean;
 }
 
 export interface Exercise {
@@ -57,7 +59,7 @@ interface WorkoutState {
   updateExerciseNotes: (exerciseId: string, notes: string) => void;
   setExerciseRest: (exerciseId: string, restSeconds: number) => void;
   setExerciseRestEnabled: (exerciseId: string, enabled: boolean) => void;
-  addSet: (exerciseId: string) => void;
+  addSet: (exerciseId: string, isWarmup?: boolean) => void;
   updateSet: (
     exerciseId: string,
     setId: string,
@@ -76,13 +78,14 @@ interface WorkoutState {
 
 const uid = () => crypto.randomUUID();
 
-function defaultSet(previous?: WorkoutSet): WorkoutSet {
+function defaultSet(previous?: WorkoutSet, isWarmup = false): WorkoutSet {
   return {
     id: uid(),
     reps: previous?.reps ?? 0,
     weight: previous?.weight ?? 0,
     unit: previous?.unit ?? 'lbs',
     completed: false,
+    isWarmup,
   };
 }
 
@@ -290,14 +293,28 @@ export const useWorkoutStore = create<WorkoutState>()(
         });
       },
 
-      addSet: (exerciseId) => {
+      addSet: (exerciseId, isWarmup = false) => {
         set({
           workouts: updateActiveWorkout(get().workouts, get().activeWorkoutId, (w) => ({
             ...w,
             exercises: w.exercises.map((e) => {
               if (e.id !== exerciseId) return e;
-              const lastSet = e.sets[e.sets.length - 1];
-              return { ...e, sets: [...e.sets, defaultSet(lastSet)] };
+              // Seed weight/reps/unit from the most recent set of the same
+              // type, so adding another warm-up doesn't inherit a working
+              // set's heavier weight (and vice versa).
+              const priorSameType = [...e.sets].reverse().find((s) => Boolean(s.isWarmup) === isWarmup);
+              const newSet = defaultSet(priorSameType, isWarmup);
+
+              if (!isWarmup) {
+                return { ...e, sets: [...e.sets, newSet] };
+              }
+              // Warm-ups always land before working sets: insert right after
+              // the last existing warm-up (or at the very start if there are none).
+              const insertAt = e.sets.reduce((idx, s, i) => (s.isWarmup ? i + 1 : idx), 0);
+              return {
+                ...e,
+                sets: [...e.sets.slice(0, insertAt), newSet, ...e.sets.slice(insertAt)],
+              };
             }),
           })),
         });

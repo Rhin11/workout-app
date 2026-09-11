@@ -101,8 +101,13 @@ export default function WorkoutDayModal({
                         {exercise.sets.map((s) => (
                           <span
                             key={s.id}
-                            className="rounded-md border border-slate-700/60 bg-slate-900/60 px-2 py-0.5 text-xs text-slate-300"
+                            className={`rounded-md border px-2 py-0.5 text-xs ${
+                              s.isWarmup
+                                ? 'border-amber-800/50 bg-amber-500/5 text-amber-400'
+                                : 'border-slate-700/60 bg-slate-900/60 text-slate-300'
+                            }`}
                           >
+                            {s.isWarmup && <span className="mr-1 opacity-70">W</span>}
                             {formatSet(s.weight, s.reps)} {s.unit}
                           </span>
                         ))}
