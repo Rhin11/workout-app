@@ -53,6 +53,8 @@ interface WorkoutState {
   editWorkout: (id: string) => void;
   renameWorkout: (id: string, name: string) => void;
   deleteWorkout: (id: string) => void;
+  /** Start a new active workout cloned from a past one: same exercises/sets structure, all values cleared. */
+  repeatWorkout: (id: string) => void;
   addExercise: (name: string) => void;
   addExerciseToSuperset: (name: string, supersetId: string) => void;
   removeExercise: (exerciseId: string) => void;
@@ -188,6 +190,55 @@ export const useWorkoutStore = create<WorkoutState>()(
         set({
           workouts: workouts.filter((w) => w.id !== id),
           activeWorkoutId: activeWorkoutId === id ? null : activeWorkoutId,
+        });
+      },
+
+      repeatWorkout: (id) => {
+        const source = get().workouts.find((w) => w.id === id);
+        if (!source) return;
+
+        // Superset groups need fresh ids too, remapped consistently across
+        // their member exercises so the grouping survives the clone.
+        const groupIdMap = new Map<string, string>();
+        for (const g of source.supersetGroups ?? []) groupIdMap.set(g.id, uid());
+
+        const exercises: Exercise[] = source.exercises.map((e) => ({
+          id: uid(),
+          name: e.name,
+          notes: e.notes,
+          restSeconds: e.restSeconds,
+          restEnabled: e.restEnabled,
+          supersetId: e.supersetId ? groupIdMap.get(e.supersetId) : undefined,
+          // Same set structure (count, warm-up/working split, unit) as the
+          // source workout, but every value cleared and marked incomplete.
+          sets: e.sets.map((s) => ({
+            id: uid(),
+            reps: 0,
+            weight: 0,
+            unit: s.unit,
+            completed: false,
+            isWarmup: s.isWarmup,
+          })),
+        }));
+
+        const supersetGroups: SupersetGroup[] = (source.supersetGroups ?? []).map((g) => ({
+          id: groupIdMap.get(g.id)!,
+          restSeconds: g.restSeconds,
+          restEnabled: g.restEnabled,
+        }));
+
+        const workout: Workout = {
+          id: uid(),
+          name: source.name,
+          date: new Date().toISOString(),
+          exercises,
+          supersetGroups,
+          finishedAt: null,
+        };
+
+        set({
+          workouts: [workout, ...get().workouts],
+          activeWorkoutId: workout.id,
         });
       },
 

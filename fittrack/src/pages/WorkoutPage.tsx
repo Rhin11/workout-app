@@ -50,6 +50,7 @@ export default function WorkoutPage() {
     editWorkout,
     renameWorkout,
     deleteWorkout,
+    repeatWorkout,
     addExercise,
     addExerciseToSuperset,
     removeExercise,
@@ -138,6 +139,7 @@ export default function WorkoutPage() {
               onDelete={deleteWorkout}
               onEdit={editWorkout}
               onRename={renameWorkout}
+              onRepeat={repeatWorkout}
               initialExpandedId={viewWorkoutId}
             />
           </section>
