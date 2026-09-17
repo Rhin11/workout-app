@@ -34,10 +34,10 @@ function playChime() {
   ].forEach(({ t, freq }) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, now + t);
-    gain.gain.exponentialRampToValueAtTime(0.3, now + t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.85, now + t + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.18);
     osc.connect(gain).connect(ctx.destination);
     osc.start(now + t);

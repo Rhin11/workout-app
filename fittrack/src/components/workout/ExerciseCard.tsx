@@ -6,12 +6,16 @@ import {
   type Exercise,
 } from '../../store/workoutStore';
 import { useRestTimer } from '../../store/restTimerStore';
+import { isBarbellLift } from '../../constants/exercises';
 import { formatMMSS } from '../../utils/time';
 import { setLabel } from '../../utils/setLabels';
 import AskCoachButton from './AskCoachButton';
+import BarbellCalculator from './BarbellCalculator';
 import ExerciseInfoButton from './ExerciseInfoButton';
+import LiftHistory from './LiftHistory';
 import RestToggle from './RestToggle';
 import SetRow from './SetRow';
+import { useLiftHistory } from '../../utils/liftHistory';
 
 interface Props {
   exercise: Exercise;
@@ -78,6 +82,11 @@ export default function ExerciseCard({
     (sum, s) => sum + (s.completed ? s.reps * s.weight : 0),
     0,
   );
+
+  const plateTarget =
+    exercise.sets.find((s) => !s.completed) ?? exercise.sets[exercise.sets.length - 1];
+  const showPlates = isBarbellLift(exercise.name) && plateTarget;
+  const history = useLiftHistory(exercise.name, exercise.sets);
 
   return (
     <div
@@ -198,6 +207,8 @@ export default function ExerciseCard({
         </div>
       </div>
 
+      <LiftHistory history={history} />
+
       <div className="mb-1 grid grid-cols-[2.5rem_1fr_1fr_2.5rem_2rem] gap-2 px-0 text-xs font-medium uppercase tracking-wide text-gray-500">
         <span className="text-center">Set</span>
         <span className="text-center">Weight</span>
@@ -206,17 +217,31 @@ export default function ExerciseCard({
         <span />
       </div>
 
-      {exercise.sets.map((s, i) => (
+      {exercise.sets.map((s, i) => {
+        const workingIndex = s.isWarmup
+          ? -1
+          : exercise.sets.slice(0, i + 1).filter((x) => !x.isWarmup).length - 1;
+        return (
         <SetRow
           key={s.id}
           setNumber={setLabel(exercise.sets, i)}
           isWarmup={s.isWarmup}
           set={s}
+          previous={workingIndex >= 0 ? history.lastWorkingSets[workingIndex] : undefined}
           onUpdate={(updates) => handleUpdateSet(s.id, updates)}
           onRemove={() => onRemoveSet(s.id)}
           canRemove={exercise.sets.length > 1}
         />
-      ))}
+        );
+      })}
+
+      {showPlates && plateTarget && (
+        <BarbellCalculator
+          weight={plateTarget.weight}
+          unit={plateTarget.unit}
+          onChange={(weight) => handleUpdateSet(plateTarget.id, { weight })}
+        />
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex flex-1 gap-2">

@@ -751,9 +751,21 @@ export function getExercisesByCategory(category: ExerciseCategoryFilter): Exerci
 
 export const EXERCISE_COUNT = EXERCISES.length;
 
+export function getExerciseByName(name: string): ExerciseDefinition | undefined {
+  return EXERCISES.find((e) => e.name.toLowerCase() === name.toLowerCase());
+}
+
 export function getMusclesForExercise(name: string): MuscleGroupFilter[] {
-  const match = EXERCISES.find((e) => e.name.toLowerCase() === name.toLowerCase());
+  const match = getExerciseByName(name);
   const muscles = match?.muscles ?? inferMuscles(name);
   const specific = muscles.filter((m) => m !== 'Full Body');
   return specific.length > 0 ? specific : muscles;
+}
+
+/** True for catalog lifts loaded on a barbell (Barbell + Olympic categories). */
+export function isBarbellLift(name: string): boolean {
+  const match = getExerciseByName(name);
+  if (match) return match.category === 'Barbell' || match.category === 'Olympic';
+  const n = name.toLowerCase();
+  return n.includes('barbell') || n.includes('olympic');
 }

@@ -1,3 +1,4 @@
+import type { HistoricSet } from '../../utils/liftHistory';
 import type { WorkoutSet } from '../../store/workoutStore';
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   leadingLabel?: string;
   /** Styles the row as a warm-up set (amber accent) instead of a working set. */
   isWarmup?: boolean;
+  /** Last session's matching working set, shown as a hint. */
+  previous?: HistoricSet;
 }
 
 export default function SetRow({
@@ -22,6 +25,7 @@ export default function SetRow({
   readOnly,
   leadingLabel,
   isWarmup = false,
+  previous,
 }: Props) {
   const leadCols = leadingLabel ? '6rem' : '2.5rem';
   const leadCell = leadingLabel ? (
@@ -63,7 +67,8 @@ export default function SetRow({
     >
       {leadCell}
 
-      <div className="flex items-center gap-1">
+      <div className="flex flex-col items-stretch gap-0.5">
+        <div className="flex items-center gap-1">
         <input
           type="number"
           min={0}
@@ -81,6 +86,12 @@ export default function SetRow({
           <option value="lbs">lbs</option>
           <option value="kg">kg</option>
         </select>
+        </div>
+        {previous && (
+          <span className="text-center text-[10px] tabular-nums text-gray-600">
+            last {previous.weight}×{previous.reps}
+          </span>
+        )}
       </div>
 
       <input
