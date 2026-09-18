@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import authRouter from './routes/auth';
+import workoutsRouter from './routes/workouts';
+import macrosRouter from './routes/macros';
 import liftCoachRouter from './routes/liftCoach';
 import exerciseDemoRouter from './routes/exerciseDemo';
 
@@ -14,10 +17,9 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Routes added in subsequent phases
-// app.use('/auth', authRouter);
-// app.use('/workouts', workoutsRouter);
-// app.use('/food-logs', macrosRouter);
+app.use('/auth', authRouter);
+app.use('/workouts', workoutsRouter);
+app.use('/food-logs', macrosRouter);
 app.use('/api/lift-coach', liftCoachRouter);
 app.use('/api/exercise-demo', exerciseDemoRouter);
 
