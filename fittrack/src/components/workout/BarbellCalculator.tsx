@@ -99,27 +99,22 @@ export default function BarbellCalculator({ weight, unit, onChange }: Props) {
   const summary = weight > 0 ? `${weight} ${unit}` : `Bar ${bar} ${unitLabel}`;
 
   return (
-    <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2">
+    <div className="mb-3 rounded-lg border border-gray-800 bg-gray-950">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 py-1 text-left"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
         aria-expanded={open}
         aria-label={open ? 'Collapse plate calculator' : 'Expand plate calculator'}
       >
-        <span className="flex items-center gap-2">
-          <span className="text-xs text-gray-500" aria-hidden>
-            {open ? '▾' : '▸'}
-          </span>
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Plate calculator
-          </span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+          {open ? '▾' : '▸'} Plate calculator
         </span>
-        <span className="text-sm font-semibold tabular-nums text-gray-100">{summary}</span>
+        <span className="text-xs font-semibold tabular-nums text-gray-300">{summary}</span>
       </button>
 
       {open && (
-      <div className="mt-2">
+      <div className="border-t border-gray-800 px-3 py-2">
       <div className="flex items-center justify-center gap-0 overflow-x-auto py-1">
         <Sleeve plates={plates} max={max} side="left" onRemove={(p) => onChange(removePlate(weight, unit, p.weight))} />
         <div
@@ -149,7 +144,7 @@ export default function BarbellCalculator({ weight, unit, onChange }: Props) {
         </p>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
         {defs.map((plate) => {
           const needsOutline = plate.color === colors.plateWhite || plate.color === colors.plateBlack;
           return (
@@ -157,7 +152,7 @@ export default function BarbellCalculator({ weight, unit, onChange }: Props) {
               key={plate.weight}
               type="button"
               onClick={() => onChange(addPlate(weight, unit, plate.weight))}
-              className="flex h-10 min-w-10 flex-col items-center justify-center rounded-full px-2 text-[11px] font-bold shadow-sm transition-transform hover:scale-105"
+              className="flex h-8 min-w-8 flex-col items-center justify-center rounded-full px-1.5 text-[10px] font-bold shadow-sm transition-transform hover:scale-105"
               style={{
                 backgroundColor: plate.color,
                 color: plate.textColor,
@@ -172,7 +167,7 @@ export default function BarbellCalculator({ weight, unit, onChange }: Props) {
         <button
           type="button"
           onClick={() => onChange(0)}
-          className="h-10 rounded-full border border-gray-700 px-3 text-[11px] font-medium text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200"
+          className="h-8 rounded-full border border-gray-700 px-2.5 text-[10px] font-medium text-gray-400 transition-colors hover:border-gray-500 hover:text-gray-200"
         >
           Clear
         </button>

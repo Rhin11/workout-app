@@ -209,6 +209,14 @@ export default function ExerciseCard({
 
       <LiftHistory history={history} />
 
+      {showPlates && plateTarget && (
+        <BarbellCalculator
+          weight={plateTarget.weight}
+          unit={plateTarget.unit}
+          onChange={(weight) => handleUpdateSet(plateTarget.id, { weight })}
+        />
+      )}
+
       <div className="mb-1 grid grid-cols-[2.5rem_1fr_1fr_2.5rem_2rem] gap-2 px-0 text-xs font-medium uppercase tracking-wide text-gray-500">
         <span className="text-center">Set</span>
         <span className="text-center">Weight</span>
@@ -234,14 +242,6 @@ export default function ExerciseCard({
         />
         );
       })}
-
-      {showPlates && plateTarget && (
-        <BarbellCalculator
-          weight={plateTarget.weight}
-          unit={plateTarget.unit}
-          onChange={(weight) => handleUpdateSet(plateTarget.id, { weight })}
-        />
-      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex flex-1 gap-2">
