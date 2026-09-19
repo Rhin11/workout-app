@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Workout } from '../../store/workoutStore';
+import { setLabel } from '../../utils/setLabels';
 import SetRow from './SetRow';
 import WorkoutSummary from './WorkoutSummary';
 
@@ -8,6 +9,8 @@ interface Props {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onRename: (id: string, name: string) => void;
+  /** Starts a new active workout cloned from this one, with all sets cleared. */
+  onRepeat: (id: string) => void;
   /** When set, this workout starts expanded and is scrolled into view (e.g. deep-linked from Home). */
   initialExpandedId?: string | null;
 }
@@ -32,6 +35,7 @@ export default function WorkoutHistory({
   onDelete,
   onEdit,
   onRename,
+  onRepeat,
   initialExpandedId,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
@@ -129,6 +133,13 @@ export default function WorkoutHistory({
                   </button>
                   <button
                     type="button"
+                    onClick={() => onRepeat(workout.id)}
+                    className="shrink-0 rounded-lg border border-green-700/60 px-3 py-1.5 text-xs font-medium text-green-400 transition-colors hover:border-green-500 hover:text-green-300"
+                  >
+                    Repeat
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => beginRename(workout)}
                     className="shrink-0 rounded-lg border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:border-gray-600 hover:text-gray-200"
                   >
@@ -159,7 +170,14 @@ export default function WorkoutHistory({
                     ))}
                   </div>
                 )}
-                <div className="mt-4 flex gap-4">
+                <div className="mt-4 flex flex-wrap gap-4">
+                  <button
+                    type="button"
+                    onClick={() => onRepeat(workout.id)}
+                    className="text-sm text-green-400 hover:text-green-300"
+                  >
+                    Repeat workout
+                  </button>
                   <button
                     type="button"
                     onClick={() => onEdit(workout.id)}
@@ -207,7 +225,8 @@ function HistoryExercise({ exercise }: { exercise: Workout['exercises'][number] 
       {exercise.sets.map((s, i) => (
         <SetRow
           key={s.id}
-          setNumber={i + 1}
+          setNumber={setLabel(exercise.sets, i)}
+          isWarmup={s.isWarmup}
           set={s}
           onUpdate={() => {}}
           onRemove={() => {}}

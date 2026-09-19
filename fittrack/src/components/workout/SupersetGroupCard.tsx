@@ -5,7 +5,11 @@ import {
   type SupersetGroup,
 } from '../../store/workoutStore';
 import { useRestTimer } from '../../store/restTimerStore';
+import { isBarbellLift } from '../../constants/exercises';
 import { formatMMSS } from '../../utils/time';
+import { useLiftHistory } from '../../utils/liftHistory';
+import BarbellCalculator from './BarbellCalculator';
+import LiftHistory from './LiftHistory';
 import RestToggle from './RestToggle';
 import SetRow from './SetRow';
 
@@ -28,6 +32,42 @@ interface Props {
 }
 
 const REST_STEP = 15;
+
+function SupersetLiftHistory({ exercise }: { exercise: Exercise }) {
+  const history = useLiftHistory(exercise.name, exercise.sets);
+  if (!history.last) return null;
+  return (
+    <div className="mt-2">
+      <p className="mb-1 text-[11px] text-gray-500">{exercise.name}</p>
+      <LiftHistory history={history} />
+    </div>
+  );
+}
+
+function SupersetSetRow({
+  exercise,
+  roundIndex,
+  set,
+  onUpdate,
+}: {
+  exercise: Exercise;
+  roundIndex: number;
+  set: Exercise['sets'][number];
+  onUpdate: (updates: Parameters<Props['onUpdateSet']>[2]) => void;
+}) {
+  const { lastWorkingSets } = useLiftHistory(exercise.name, exercise.sets);
+  return (
+    <SetRow
+      setNumber={roundIndex + 1}
+      leadingLabel={exercise.name}
+      set={set}
+      previous={!set.isWarmup ? lastWorkingSets[roundIndex] : undefined}
+      onUpdate={onUpdate}
+      onRemove={() => {}}
+      canRemove={false}
+    />
+  );
+}
 
 export default function SupersetGroupCard({
   label,
@@ -95,6 +135,9 @@ export default function SupersetGroupCard({
               </span>
             ))}
           </div>
+          {exercises.map((e) => (
+            <SupersetLiftHistory key={`hist-${e.id}`} exercise={e} />
+          ))}
         </div>
         <button
           type="button"
@@ -136,20 +179,35 @@ export default function SupersetGroupCard({
               const s = e.sets[r];
               if (!s) return null;
               return (
-                <SetRow
+                <SupersetSetRow
                   key={e.id}
-                  setNumber={r + 1}
-                  leadingLabel={e.name}
+                  exercise={e}
+                  roundIndex={r}
                   set={s}
                   onUpdate={(updates) => handleUpdateSet(e.id, s.id, updates)}
-                  onRemove={() => {}}
-                  canRemove={false}
                 />
               );
             })}
           </div>
         ))}
       </div>
+
+      {exercises
+        .filter((e) => isBarbellLift(e.name))
+        .map((e) => {
+          const target = e.sets.find((s) => !s.completed) ?? e.sets[e.sets.length - 1];
+          if (!target) return null;
+          return (
+            <div key={`plates-${e.id}`} className="mt-3">
+              <p className="mb-1 text-xs text-gray-500">{e.name}</p>
+              <BarbellCalculator
+                weight={target.weight}
+                unit={target.unit}
+                onChange={(weight) => handleUpdateSet(e.id, target.id, { weight })}
+              />
+            </div>
+          );
+        })}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button

@@ -50,6 +50,7 @@ export default function WorkoutPage() {
     editWorkout,
     renameWorkout,
     deleteWorkout,
+    repeatWorkout,
     addExercise,
     addExerciseToSuperset,
     removeExercise,
@@ -138,6 +139,7 @@ export default function WorkoutPage() {
               onDelete={deleteWorkout}
               onEdit={editWorkout}
               onRename={renameWorkout}
+              onRepeat={repeatWorkout}
               initialExpandedId={viewWorkoutId}
             />
           </section>
@@ -296,7 +298,7 @@ export default function WorkoutPage() {
                   <ExerciseCard
                     key={item.exercise.id}
                     exercise={item.exercise}
-                    onAddSet={() => addSet(item.exercise.id)}
+                    onAddSet={(isWarmup) => addSet(item.exercise.id, isWarmup)}
                     onRemoveExercise={() => removeExercise(item.exercise.id)}
                     onUpdateNotes={(notes) => updateExerciseNotes(item.exercise.id, notes)}
                     onUpdateSet={(setId, updates) => updateSet(item.exercise.id, setId, updates)}

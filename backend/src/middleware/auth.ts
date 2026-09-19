@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../lib/jwt';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -14,8 +15,7 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
   const token = authHeader.slice(7);
   try {
-    const secret = process.env.JWT_SECRET ?? 'fittrack-dev-secret';
-    const payload = jwt.verify(token, secret) as { userId: string };
+    const payload = jwt.verify(token, getJwtSecret()) as { userId: string };
     req.userId = payload.userId;
     next();
   } catch {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AuthState {
   token: string | null;
@@ -7,9 +8,14 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  token: null,
-  userId: null,
-  setToken: (token, userId) => set({ token, userId }),
-  clearAuth: () => set({ token: null, userId: null }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      token: null,
+      userId: null,
+      setToken: (token, userId) => set({ token, userId }),
+      clearAuth: () => set({ token: null, userId: null }),
+    }),
+    { name: 'forge-auth' },
+  ),
+);
